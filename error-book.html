@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>错题分析器 · 小初高数学错题本</title>
+<style>
+/* ========== CSS RESET & BASE ========== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#6C5CE7;--primary-light:#a29bfe;--primary-dark:#4834d4;
+  --accent:#00cec9;--accent-light:#7efbfb;
+  --danger:#e74c3c;--danger-light:#ff7979;
+  --success:#2ecc71;--success-light:#7dcea0;
+  --warning:#f39c12;--warning-light:#f8c471;
+  --bg:#f8f9fa;--bg-card:#fff;--bg-sidebar:#2d3436;
+  --text:#2d3436;--text-light:#636e72;--text-muted:#b2bec3;
+  --border:#dfe6e9;--shadow:0 2px 8px rgba(0,0,0,0.08);
+  --radius:12px;--radius-sm:8px;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;
+  --transition:all 0.3s cubic-bezier(0.4,0,0.2,1);
+  --sidebar-w:240px;
+  --grade-theme:'default';
+}
+[data-theme="dark"]{
+  --bg:#1a1a2e;--bg-card:#16213e;--bg-sidebar:#0f3460;
+  --text:#e0e0e0;--text-light:#a0a0a0;--text-muted:#666;
+  --border:#333;--shadow:0 2px 8px rgba(0,0,0,0.3);
+}
+/* Grade themes */
+[data-grade="3-6"]{--primary:#ff6b6b;--primary-light:#ffa502;--accent:#7bed9f;--accent-light:#2ed573}
+[data-grade="7-9"]{--primary:#6C5CE7;--primary-light:#a29bfe;--accent:#00cec9;--accent-light:#7efbfb}
+[data-grade="10-12"]{--primary:#34495e;--primary-light:#5d6d7e;--accent:#1abc9c;--accent-light:#76d7c4}
+
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;transition:var(--transition)}
+
+/* ========== SIDEBAR ========== */
+.sidebar{position:fixed;left:0;top:0;width:var(--sidebar-w);height:100vh;background:var(--bg-sidebar);color:#fff;z-index:100;display:flex;flex-direction:column;transition:var(--transition)}
+.sidebar-logo{padding:24px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,0.1)}
+.sidebar-logo .icon{width:40px;height:40px;background:var(--primary);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.sidebar-logo h1{font-size:16px;font-weight:700;letter-spacing:0.5px}
+.sidebar-logo p{font-size:11px;color:rgba(255,255,255,0.6)}
+.sidebar-nav{flex:1;padding:12px 0;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:rgba(255,255,255,0.7);cursor:pointer;border-radius:0;transition:var(--transition);position:relative;font-size:14px}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,0.1)}
+.nav-item.active{color:#fff;background:rgba(255,255,255,0.15)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;background:var(--accent);border-radius:2px}
+.nav-item .emoji{font-size:18px;width:24px;text-align:center}
+.nav-badge{margin-left:auto;background:var(--danger);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
+.sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1)}
+.sidebar-footer .grade-badge{display:inline-flex;align-items:center;gap:6px;background:var(--primary);padding:4px 12px;border-radius:20px;font-size:12px}
+.sidebar-user{display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(255,255,255,0.05);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);margin-bottom:8px}
+.sidebar-user:hover{background:rgba(255,255,255,0.1)}
+.sidebar-user .user-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.sidebar-user .user-name{font-size:13px;font-weight:600;color:#fff}
+.sidebar-user .user-grade{font-size:11px;color:rgba(255,255,255,0.5)}
+
+/* ========== LOGIN / USER SELECT SCREEN ========== */
+.login-screen{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column}
+.login-box{background:var(--bg-card);border-radius:var(--radius);padding:32px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.12)}
+.login-box h2{font-size:24px;text-align:center;margin-bottom:8px}
+.login-box .login-subtitle{text-align:center;color:var(--text-light);font-size:14px;margin-bottom:24px}
+.user-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.user-card{display:flex;align-items:center;gap:12px;padding:14px 16px;border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition)}
+.user-card:hover{border-color:var(--primary);background:rgba(108,92,231,0.05)}
+.user-card .uc-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.user-card .uc-info{flex:1}
+.user-card .uc-name{font-size:15px;font-weight:600}
+.user-card .uc-meta{font-size:12px;color:var(--text-light)}
+.user-card .uc-errors{font-size:12px;background:var(--primary);color:#fff;padding:2px 8px;border-radius:10px}
+.user-card.selected{border-color:var(--accent);background:rgba(0,206,201,0.05)}
+
+/* ========== MAIN CONTENT ========== */
+.main{margin-left:var(--sidebar-w);min-height:100vh;padding:24px;transition:var(--transition)}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.page-header h2{font-size:24px;font-weight:700}
+.page-header .subtitle{font-size:13px;color:var(--text-light)}
+
+/* ========== CARD ========== */
+.card{background:var(--bg-card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);border:1px solid var(--border);transition:var(--transition)}
+.card:hover{box-shadow:0 4px 16px rgba(0,0,0,0.12)}
+.card-title{font-size:16px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card-title .emoji{font-size:20px}
+
+/* ========== STATS GRID ========== */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:var(--bg-card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);border:1px solid var(--border);text-align:center;transition:var(--transition)}
+.stat-card:hover{transform:translateY(-2px)}
+.stat-card .stat-icon{font-size:28px;margin-bottom:8px}
+.stat-card .stat-value{font-size:28px;font-weight:700;color:var(--primary)}
+.stat-card .stat-label{font-size:12px;color:var(--text-light);margin-top:4px}
+
+/* ========== BUTTONS ========== */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;transition:var(--transition);border:none;outline:none}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{opacity:0.9;transform:translateY(-1px)}
+.btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary)}
+.btn-outline:hover{background:var(--primary);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{opacity:0.9}
+.btn-sm{padding:6px 14px;font-size:12px;border-radius:6px}
+.btn-lg{padding:14px 28px;font-size:16px}
+.btn-block{width:100%;justify-content:center}
+
+/* ========== FORM ========== */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:13px;font-weight:600;color:var(--text-light);margin-bottom:6px}
+.form-input,.form-select,.form-textarea{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--bg-card);color:var(--text);transition:var(--transition);outline:none}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(108,92,231,0.1)}
+.form-textarea{min-height:100px;resize:vertical;line-height:1.6}
+.form-select{cursor:pointer}
+
+/* ========== UPLOAD AREA ========== */
+.upload-area{border:2px dashed var(--border);border-radius:var(--radius);padding:32px;text-align:center;cursor:pointer;transition:var(--transition);background:rgba(108,92,231,0.03)}
+.upload-area:hover{border-color:var(--primary);background:rgba(108,92,231,0.08)}
+.upload-area.dragging{border-color:var(--accent);background:rgba(0,206,201,0.08)}
+.upload-area .upload-icon{font-size:48px;margin-bottom:12px}
+.upload-area .upload-text{font-size:14px;color:var(--text-light)}
+.upload-preview{max-width:200px;max-height:200px;border-radius:var(--radius-sm);margin:12px auto;display:none;object-fit:contain}
+
+/* ========== CHAT INTERFACE ========== */
+.chat-container{background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden}
+.chat-messages{padding:20px;max-height:400px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+.chat-msg{display:flex;gap:10px;max-width:85%}
+.chat-msg.ai{align-self:flex-start}
+.chat-msg.user{align-self:flex-end;flex-direction:row-reverse}
+.chat-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.chat-msg.ai .chat-avatar{background:var(--accent);color:#fff}
+.chat-msg.user .chat-avatar{background:var(--primary);color:#fff}
+.chat-bubble{padding:12px 16px;border-radius:16px;font-size:14px;line-height:1.6}
+.chat-msg.ai .chat-bubble{background:#f0f0f0;border-radius:4px 16px 16px 16px}
+[data-theme="dark"] .chat-msg.ai .chat-bubble{background:var(--bg-sidebar)}
+.chat-msg.user .chat-bubble{background:var(--primary);color:#fff;border-radius:16px 4px 16px 16px}
+.chat-input-bar{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg)}
+.chat-input{flex:1;padding:10px 14px;border:2px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--bg-card);color:var(--text);outline:none;transition:var(--transition)}
+.chat-input:focus{border-color:var(--primary)}
+
+/* ========== KNOWLEDGE TREE ========== */
+.ktree{display:flex;flex-direction:column;gap:8px;padding:8px}
+.ktree-node{padding:12px 16px;border-radius:var(--radius-sm);border:2px solid var(--border);cursor:pointer;transition:var(--transition);position:relative;display:flex;align-items:center;gap:8px;font-size:14px}
+.ktree-node:hover{border-color:var(--primary);background:rgba(108,92,231,0.05)}
+.ktree-node.blocked{border-color:var(--danger);background:rgba(231,76,60,0.05)}
+.ktree-node.blocked::after{content:'⚡卡点';font-size:11px;background:var(--danger);color:#fff;padding:2px 8px;border-radius:10px;margin-left:auto}
+.ktree-node.mastered{border-color:var(--success);background:rgba(46,204,113,0.05)}
+.ktree-node.mastered::after{content:'✅已掌握';font-size:11px;background:var(--success);color:#fff;padding:2px 8px;border-radius:10px;margin-left:auto}
+.ktree-node.weak{border-color:var(--warning);background:rgba(243,156,18,0.05)}
+.ktree-node.weak::after{content:'⚠薄弱';font-size:11px;background:var(--warning);color:#fff;padding:2px 8px;border-radius:10px;margin-left:auto}
+.ktree-children{padding-left:20px;display:flex;flex-direction:column;gap:6px}
+
+/* ========== PROGRESS BAR ========== */
+.progress-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;border-radius:4px;transition:width 0.5s ease}
+.progress-fill.primary{background:var(--primary)}
+.progress-fill.success{background:var(--success)}
+.progress-fill.warning{background:var(--warning)}
+.progress-fill.danger{background:var(--danger)}
+
+/* ========== MASTERY HEATMAP ========== */
+.heatmap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px}
+.heatmap-cell{border-radius:var(--radius-sm);padding:8px;text-align:center;font-size:11px;font-weight:600;color:#fff;cursor:pointer;transition:var(--transition)}
+.heatmap-cell:hover{transform:scale(1.05)}
+.heatmap-cell.level-0{background:#e0e0e0;color:var(--text)}
+.heatmap-cell.level-1{background:var(--danger-light)}
+.heatmap-cell.level-2{background:var(--warning-light)}
+.heatmap-cell.level-3{background:#81ecec}
+.heatmap-cell.level-4{background:var(--success-light)}
+.heatmap-cell.level-5{background:var(--success)}
+
+/* ========== ERROR BOOK LIST ========== */
+.error-item{display:flex;align-items:center;gap:16px;padding:16px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid var(--border);transition:var(--transition);cursor:pointer}
+.error-item:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
+.error-item .error-thumb{width:48px;height:48px;border-radius:var(--radius-sm);background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.error-item .error-info{flex:1;min-width:0}
+.error-item .error-title{font-size:14px;font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.error-item .error-meta{font-size:12px;color:var(--text-light);display:flex;gap:8px}
+.error-item .error-status{font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600}
+.error-status.unresolved{background:rgba(231,76,60,0.1);color:var(--danger)}
+.error-status.practicing{background:rgba(243,156,18,0.1);color:var(--warning)}
+.error-status.mastered{background:rgba(46,204,113,0.1);color:var(--success)}
+
+/* ========== PRACTICE CARD ========== */
+.practice-card{background:var(--bg-card);border-radius:var(--radius);padding:20px;border:2px solid var(--border);margin-bottom:16px;transition:var(--transition)}
+.practice-card.difficulty-1{border-left:4px solid var(--success)}
+.practice-card.difficulty-2{border-left:4px solid var(--warning)}
+.practice-card.difficulty-3{border-left:4px solid var(--danger)}
+.practice-card .difficulty-label{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;margin-bottom:12px}
+.difficulty-label.d1{background:rgba(46,204,113,0.1);color:var(--success)}
+.difficulty-label.d2{background:rgba(243,156,18,0.1);color:var(--warning)}
+.difficulty-label.d3{background:rgba(231,76,60,0.1);color:var(--danger)}
+.practice-question{font-size:15px;line-height:1.8;margin-bottom:16px;padding:12px;background:rgba(108,92,231,0.03);border-radius:var(--radius-sm)}
+.practice-result{padding:12px;border-radius:var(--radius-sm);margin-top:12px;font-size:13px}
+.practice-result.correct{background:rgba(46,204,113,0.1);color:var(--success);border:1px solid var(--success)}
+.practice-result.wrong{background:rgba(231,76,60,0.1);color:var(--danger);border:1px solid var(--danger)}
+
+/* ========== WEEKLY SUMMARY ========== */
+.weekly-stats{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.weekly-stat{background:var(--bg-card);border-radius:var(--radius-sm);padding:16px;border:1px solid var(--border)}
+.weekly-stat .ws-label{font-size:12px;color:var(--text-light)}
+.weekly-stat .ws-value{font-size:24px;font-weight:700;margin-top:4px}
+
+/* ========== SETTINGS ========== */
+.setting-section{margin-bottom:24px}
+.setting-section h3{font-size:16px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.setting-row{display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--border)}
+.setting-row:last-child{border-bottom:none}
+.setting-row .setting-label{flex:1;font-size:14px}
+.toggle{width:48px;height:24px;background:var(--border);border-radius:12px;cursor:pointer;position:relative;transition:var(--transition)}
+.toggle.active{background:var(--primary)}
+.toggle::after{content:'';position:absolute;left:2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:var(--transition)}
+.toggle.active::after{left:26px}
+
+/* ========== LOADING/EMPTY ========== */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;gap:12px;color:var(--text-light)}
+.loading .spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:48px;color:var(--text-muted)}
+.empty-state .empty-icon{font-size:64px;margin-bottom:16px}
+.empty-state .empty-text{font-size:14px;margin-bottom:16px}
+
+/* ========== MODAL ========== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:var(--transition)}
+.modal-overlay.active{opacity:1;pointer-events:auto}
+.modal{background:var(--bg-card);border-radius:var(--radius);padding:24px;max-width:500px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);transform:translateY(20px);transition:var(--transition)}
+.modal-overlay.active .modal{transform:translateY(0)}
+
+/* ========== TOAST ========== */
+.toast{position:fixed;top:24px;right:24px;background:var(--bg-card);border-radius:var(--radius-sm);padding:12px 20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:14px;z-index:300;transform:translateX(120%);transition:var(--transition);display:flex;align-items:center;gap:8px}
+.toast.show{transform:translateX(0)}
+.toast.success{border-left:4px solid var(--success)}
+.toast.error{border-left:4px solid var(--danger)}
+.toast.warning{border-left:4px solid var(--warning)}
+
+/* ========== RESPONSIVE ========== */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .weekly-stats{grid-template-columns:1fr}
+  .mobile-toggle{display:block}
+}
+.mobile-toggle{display:none;position:fixed;top:16px;left:16px;z-index:150;background:var(--bg-sidebar);color:#fff;width:40px;height:40px;border-radius:10px;cursor:pointer;font-size:20px;border:none}
+
+/* ========== ANIMATIONS ========== */
+.fade-in{animation:fadeIn 0.3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+
+/* ========== TABS ========== */
+.tabs{display:flex;gap:4px;background:var(--border);border-radius:var(--radius-sm);padding:4px;margin-bottom:16px}
+.tab-btn{padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:var(--transition);background:transparent;color:var(--text-light)}
+.tab-btn.active{background:var(--bg-card);color:var(--primary);box-shadow:var(--shadow)}
+
+/* ========== TAG ========== */
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600}
+.tag.primary{background:rgba(108,92,231,0.1);color:var(--primary)}
+.tag.accent{background:rgba(0,206,201,0.1);color:var(--accent)}
+.tag.danger{background:rgba(231,76,60,0.1);color:var(--danger)}
+.tag.success{background:rgba(46,204,113,0.1);color:var(--success)}
+.tag.warning{background:rgba(243,156,18,0.1);color:var(--warning)}
+
+/* ========== HIDDEN PAGE ========== */
+.page{display:none}
+.page.active{display:block;animation:fadeIn 0.3s ease}
+
+/* ========== CHART CANVAS ========== */
+.chart-container{background:var(--bg-card);border-radius:var(--radius);padding:16px;border:1px solid var(--border)}
+.chart-container canvas{width:100%!important;height:auto!important}
+
+/* ========== PRINT ========== */
+.print-only{display:none}
+@media print{.sidebar,.mobile-toggle,.page-header .btn{display:none}.main{margin-left:0;padding:0}.print-only{display:block}}
+</style>
+</head>
+<body data-theme="light" data-grade="7-9">
+
+<!-- Mobile Toggle -->
+<button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Modal -->
+<div id="modal-overlay" class="modal-overlay" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- Login / User Select Screen -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <h2>📚 错题分析器</h2>
+    <div class="login-subtitle">选择你的用户档案，或创建新用户</div>
+    <div class="user-list" id="user-list"></div>
+    <div style="text-align:center;margin-top:16px">
+      <button class="btn btn-primary btn-block" onclick="showNewUserForm()">➕ 创建新用户</button>
+    </div>
+    <div id="new-user-form" style="display:none;margin-top:16px">
+      <div class="form-group">
+        <label class="form-label">你的名字</label>
+        <input class="form-input" id="new-user-name" placeholder="输入你的名字" maxlength="20">
+      </div>
+      <div class="form-group">
+        <label class="form-label">你的年级</label>
+        <select class="form-select" id="new-user-grade">
+          <option value="3">三年级</option><option value="4">四年级</option><option value="5">五年级</option><option value="6">六年级</option>
+          <option value="7">七年级</option><option value="8">八年级</option><option value="9">九年级</option>
+          <option value="10">高一</option><option value="11">高二</option><option value="12">高三</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">选择头像</label>
+        <div style="display:flex;gap:8px;justify-content:center" id="avatar-picker">
+          <span class="avatar-option" onclick="pickAvatar(this,'🧒')" style="cursor:pointer;font-size:28px;padding:4px;border:2px solid transparent;border-radius:50%;transition:var(--transition)">🧒</span>
+          <span class="avatar-option" onclick="pickAvatar(this,'👧')" style="cursor:pointer;font-size:28px;padding:4px;border:2px solid transparent;border-radius:50%;transition:var(--transition)">👧</span>
+          <span class="avatar-option" onclick="pickAvatar(this,'👦')" style="cursor:pointer;font-size:28px;padding:4px;border:2px solid transparent;border-radius:50%;transition:var(--transition)">👦</span>
+          <span class="avatar-option" onclick="pickAvatar(this,'🧑')" style="cursor:pointer;font-size:28px;padding:4px;border:2px solid transparent;border-radius:50%;transition:var(--transition)">🧑</span>
+          <span class="avatar-option" onclick="pickAvatar(this,'😎')" style="cursor:pointer;font-size:28px;padding:4px;border:2px solid transparent;border-radius:50%;transition:var(--transition)">😎</span>
+          <span class="avatar-option" onclick="pickAvatar(this,'🦊')" style="cursor:pointer;font-size:28px;padding:4px;border:2px solid transparent;border-radius:50%;transition:var(--transition)">🦊</span>
+          <span class="avatar-option" onclick="pickAvatar(this,'🐱')" style="cursor:pointer;font-size:28px;padding:4px;border:2px solid transparent;border-radius:50%;transition:var(--transition)">🐱</span>
+          <span class="avatar-option" onclick="pickAvatar(this,'🐼')" style="cursor:pointer;font-size:28px;padding:4px;border:2px solid transparent;border-radius:50%;transition:var(--transition)">🐼</span>
+        </div>
+      </div>
+      <button class="btn btn-accent btn-block" onclick="createNewUser()">✅ 创建并进入</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="icon">📚</div>
+    <div>
+      <h1>错题分析器</h1>
+      <p>小初高数学错题本</p>
+    </div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+      <span class="emoji">📊</span>首页仪表板
+    </div>
+    <div class="nav-item" data-page="upload" onclick="showPage('upload')">
+      <span class="emoji">📝</span>上传错题
+      <span class="nav-badge" id="upload-count">0</span>
+    </div>
+    <div class="nav-item" data-page="analysis" onclick="showPage('analysis')">
+      <span class="emoji">🔍</span>错题分析
+    </div>
+    <div class="nav-item" data-page="blockpoint" onclick="showPage('blockpoint')">
+      <span class="emoji">⚡</span>卡点诊断
+    </div>
+    <div class="nav-item" data-page="socratic" onclick="showPage('socratic')">
+      <span class="emoji">🧠</span>苏格拉底引导
+    </div>
+    <div class="nav-item" data-page="practice" onclick="showPage('practice')">
+      <span class="emoji">💪</span>举一反三
+    </div>
+    <div class="nav-item" data-page="errorbook" onclick="showPage('errorbook')">
+      <span class="emoji">📖</span>错题本
+    </div>
+    <div class="nav-item" data-page="weekly" onclick="showPage('weekly')">
+      <span class="emoji">📅</span>周度巩固
+    </div>
+    <div class="nav-item" data-page="settings" onclick="showPage('settings')">
+      <span class="emoji">⚙️</span>设置
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="sidebar-user" id="sidebar-user" onclick="switchUser()">
+      <div class="user-avatar" id="sidebar-avatar">🧒</div>
+      <div>
+        <div class="user-name" id="sidebar-username">未登录</div>
+        <div class="user-grade" id="sidebar-usergrade">点击切换用户</div>
+      </div>
+      <span style="margin-left:auto;font-size:14px;color:rgba(255,255,255,0.5)">🔄</span>
+    </div>
+    <span class="grade-badge" id="grade-badge">📐 初中数学</span>
+  </div>
+</nav>
+
+<!-- Main Content -->
+<div class="main" id="main">
+
+  <!-- ==================== PAGE: DASHBOARD ==================== -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <div><h2>📊 学习仪表板</h2><div class="subtitle">你的数学错题学习进度一览</div></div>
+      <button class="btn btn-primary" onclick="showPage('upload')">📝 录入新错题</button>
+    </div>
+    <div class="stats-grid" id="dashboard-stats">
+      <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value" id="stat-total">0</div><div class="stat-label">总错题数</div></div>
+      <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-value" id="stat-blocks">0</div><div class="stat-label">卡点数</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" id="stat-mastered">0</div><div class="stat-label">已掌握</div></div>
+      <div class="stat-card"><div class="stat-icon">💪</div><div class="stat-value" id="stat-practice">0</div><div class="stat-label">练习完成</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+      <div class="card">
+        <div class="card-title">🔥 知识点掌握热力图</div>
+        <div class="heatmap-grid" id="heatmap-grid"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📈 进步曲线</div>
+        <div class="chart-container"><canvas id="chart-progress" height="200"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 最近错题</div>
+      <div id="recent-errors"></div>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE: UPLOAD ==================== -->
+  <div class="page" id="page-upload">
+    <div class="page-header">
+      <div><h2>📝 上传错题</h2><div class="subtitle">录入你的错题，开始智能分析</div></div>
+    </div>
+    <div class="card" style="margin-bottom:24px">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchUploadTab('text')">📝 文本录入</button>
+        <button class="tab-btn" onclick="switchUploadTab('image')">📷 图片上传</button>
+      </div>
+      <div id="upload-text-tab">
+        <div class="form-group">
+          <label class="form-label">原题内容</label>
+          <textarea class="form-textarea" id="upload-question" placeholder="请输入原题内容，例如：解方程 2x + 3 = 7"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">你的错误答案</label>
+          <textarea class="form-textarea" id="upload-wrong" placeholder="请输入你当时写的答案" style="min-height:60px"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">正确答案（如有）</label>
+          <input class="form-input" id="upload-correct" placeholder="请输入正确答案">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">年级</label>
+            <select class="form-select" id="upload-grade">
+              <option value="3">三年级</option><option value="4">四年级</option><option value="5">五年级</option><option value="6">六年级</option>
+              <option value="7" selected>七年级</option><option value="8">八年级</option><option value="9">九年级</option>
+              <option value="10">高一</option><option value="11">高二</option><option value="12">高三</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">错误原因自评</label>
+            <select class="form-select" id="upload-reason">
+              <option value="">不确定</option>
+              <option value="concept">概念理解错误</option>
+              <option value="calc">计算失误</option>
+              <option value="method">解题思路偏差</option>
+              <option value="read">审题不清</option>
+              <option value="memory">公式/定理遗忘</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" onclick="submitError()">🚀 开始分析</button>
+      </div>
+      <div id="upload-image-tab" style="display:none">
+        <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
+          <div class="upload-icon">📷</div>
+          <div class="upload-text">点击或拖拽上传错题图片<br><small>支持 JPG/PNG，最大 5MB</small></div>
+          <img class="upload-preview" id="upload-preview" alt="预览">
+        </div>
+        <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
+        <div class="form-group" style="margin-top:16px">
+          <label class="form-label">年级</label>
+          <select class="form-select" id="upload-grade-img">
+            <option value="3">三年级</option><option value="4">四年级</option><option value="5">五年级</option><option value="6">六年级</option>
+            <option value="7" selected>七年级</option><option value="8">八年级</option><option value="9">九年级</option>
+            <option value="10">高一</option><option value="11">高二</option><option value="12">高三</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" onclick="submitImageError()">🚀 AI识别并分析</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE: ANALYSIS ==================== -->
+  <div class="page" id="page-analysis">
+    <div class="page-header">
+      <div><h2>🔍 错题分析</h2><div class="subtitle">AI智能分析你的错题知识点和错误类型</div></div>
+    </div>
+    <div id="analysis-content">
+      <div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">还没有分析结果，请先上传错题</div><button class="btn btn-primary" onclick="showPage('upload')">📝 上传错题</button></div>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE: BLOCKPOINT ==================== -->
+  <div class="page" id="page-blockpoint">
+    <div class="page-header">
+      <div><h2>⚡ 卡点诊断</h2><div class="subtitle">找出你到底卡在哪里，精准定位薄弱环节</div></div>
+    </div>
+    <div id="blockpoint-content">
+      <div class="empty-state"><div class="empty-icon">⚡</div><div class="empty-text">暂无卡点数据，请先分析错题</div><button class="btn btn-primary" onclick="showPage('upload')">📝 上传错题</button></div>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE: SOCRATIC ==================== -->
+  <div class="page" id="page-socratic">
+    <div class="page-header">
+      <div><h2>🧠 苏格拉底引导</h2><div class="subtitle">不直接给答案，引导你自己发现思路</div></div>
+      <button class="btn btn-accent" id="socratic-start-btn" onclick="startSocratic()">🎯 开始引导</button>
+    </div>
+    <div id="socratic-select" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-title">选择要引导的错题</div>
+        <select class="form-select" id="socratic-error-select">
+          <option value="">-- 请选择错题 --</option>
+        </select>
+      </div>
+    </div>
+    <div class="chat-container" id="socratic-chat" style="display:none">
+      <div class="chat-messages" id="socratic-messages"></div>
+      <div class="chat-input-bar">
+        <input class="chat-input" id="socratic-input" placeholder="输入你的思考..." onkeydown="if(event.key==='Enter')sendSocraticMsg()">
+        <button class="btn btn-accent btn-sm" onclick="sendSocraticMsg()">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE: PRACTICE ==================== -->
+  <div class="page" id="page-practice">
+    <div class="page-header">
+      <div><h2>💪 举一反三</h2><div class="subtitle">针对卡点出类似题，巩固掌握</div></div>
+      <button class="btn btn-accent" onclick="generatePractice()">🎯 生成练习题</button>
+    </div>
+    <div id="practice-select" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-title">选择要练习的知识点</div>
+        <select class="form-select" id="practice-kp-select">
+          <option value="">-- 请选择知识点 --</option>
+        </select>
+      </div>
+    </div>
+    <div id="practice-content">
+      <div class="empty-state"><div class="empty-icon">💪</div><div class="empty-text">选择知识点后点击生成练习题</div></div>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE: ERROR BOOK ==================== -->
+  <div class="page" id="page-errorbook">
+    <div class="page-header">
+      <div><h2>📖 错题本</h2><div class="subtitle">所有错题分类管理</div></div>
+      <div style="display:flex;gap:8px">
+        <select class="form-select" id="filter-status" style="width:120px" onchange="renderErrorBook()">
+          <option value="all">全部</option><option value="unresolved">未解决</option><option value="practicing">练习中</option><option value="mastered">已掌握</option>
+        </select>
+        <select class="form-select" id="filter-grade" style="width:120px" onchange="renderErrorBook()">
+          <option value="all">全部年级</option>
+          <option value="7">七年级</option><option value="8">八年级</option><option value="9">九年级</option>
+        </select>
+      </div>
+    </div>
+    <div id="errorbook-list"></div>
+  </div>
+
+  <!-- ==================== PAGE: WEEKLY ==================== -->
+  <div class="page" id="page-weekly">
+    <div class="page-header">
+      <div><h2>📅 周度巩固</h2><div class="subtitle">每周自动汇总，生成巩固练习</div></div>
+      <button class="btn btn-accent" onclick="generateWeekly()">🎯 生成本周巩固卷</button>
+    </div>
+    <div class="weekly-stats" id="weekly-stats-grid">
+      <div class="weekly-stat"><div class="ws-label">本周新增错题</div><div class="ws-value" id="ws-new">0</div></div>
+      <div class="weekly-stat"><div class="ws-label">本周已掌握</div><div class="ws-value" id="ws-mastered">0</div></div>
+      <div class="weekly-stat"><div class="ws-label">薄弱知识点</div><div class="ws-value" id="ws-weak">0</div></div>
+      <div class="weekly-stat"><div class="ws-label">练习完成率</div><div class="ws-value" id="ws-rate">0%</div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">📋 本周错题知识点分布</div>
+      <div class="chart-container"><canvas id="chart-weekly" height="180"></canvas></div>
+    </div>
+    <div id="weekly-content">
+      <div class="empty-state"><div class="empty-icon">📅</div><div class="empty-text">点击生成本周巩固卷</div></div>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE: SETTINGS ==================== -->
+  <div class="page" id="page-settings">
+    <div class="page-header">
+      <div><h2>⚙️ 设置</h2></div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="setting-section">
+        <h3>🔑 AI API 配置</h3>
+        <div class="form-group">
+          <label class="form-label">API Base URL</label>
+          <input class="form-input" id="setting-api-url" placeholder="https://api.openai.com/v1" value="https://api.deepseek.com/v1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">API Key</label>
+          <input class="form-input" id="setting-api-key" type="password" placeholder="输入你的API Key">
+        </div>
+        <div class="form-group">
+          <label class="form-label">模型名称</label>
+          <input class="form-input" id="setting-model" placeholder="deepseek-chat" value="deepseek-chat">
+        </div>
+        <button class="btn btn-primary" onclick="saveSettings()">💾 保存配置</button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="setting-section">
+        <h3>🎨 外观设置</h3>
+        <div class="setting-row">
+          <span class="setting-label">暗色模式</span>
+          <div class="toggle" id="toggle-dark" onclick="toggleDarkMode()"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">年级主题</label>
+          <select class="form-select" id="setting-grade-theme" onchange="changeGradeTheme(this.value)">
+            <option value="3-6">小学（卡通风格）</option>
+            <option value="7-9" selected>初中（简洁风格）</option>
+            <option value="10-12">高中（专业风格）</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="setting-section">
+        <h3>📦 数据管理</h3>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="exportData()">📤 导出数据</button>
+          <button class="btn btn-outline" onclick="importData()">📥 导入数据</button>
+          <button class="btn btn-danger" onclick="clearAllData()">🗑️ 清空数据</button>
+        </div>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+//  数学知识点树 (KNOWLEDGE TREE)
+// ============================================================
+const KNOWLEDGE_TREE = [
+  // 小学 (3-6年级)
+  {id:"arith-int-add",name:"整数加减法",grade:"3",category:"算术",prerequisites:[],keywords:["加法","减法","整数","加减"],commonErrors:[{type:"符号错误",pattern:"正负号混淆"},{type:"进退位",pattern:"进位/退位遗漏"}],description:"整数的加法和减法运算"},
+  {id:"arith-int-mult",name:"整数乘除法",grade:"4",category:"算术",prerequisites:["arith-int-add"],keywords:["乘法","除法","整数","乘除","口诀"],commonErrors:[{type:"乘法口诀",pattern:"乘法口诀记忆错误"},{type:"除法余数",pattern:"余数处理错误"}],description:"整数的乘法和除法运算"},
+  {id:"arith-decimal",name:"小数运算",grade:"4",category:"算术",prerequisites:["arith-int-add","arith-int-mult"],keywords:["小数","小数点","加减","乘除","精度"],commonErrors:[{type:"小数点移位",pattern:"小数点位置错误"},{type:"位数对齐",pattern:"小数位数未对齐"}],description:"小数的四则运算"},
+  {id:"arith-fraction-basic",name:"分数初步",grade:"5",category:"算术",prerequisites:["arith-int-mult"],keywords:["分数","分子","分母","分数加减"],commonErrors:[{type:"通分错误",pattern:"未通分直接加减"},{type:"约分遗漏",pattern:"未约分到最简"}],description:"分数的概念与基本运算"},
+  {id:"arith-percent",name:"百分数",grade:"6",category:"算术",prerequisites:["arith-fraction-basic","arith-decimal"],keywords:["百分数","百分比","百分号","转化"],commonErrors:[{type:"转化错误",pattern:"分数/小数/百分数互化错误"}],description:"百分数的概念与计算"},
+  {id:"geo-basic-shape",name:"基本图形认识",grade:"3",category:"几何",prerequisites:[],keywords:["三角形","正方形","圆","长方形","图形","周长","面积"],commonErrors:[{type:"公式混淆",pattern:"周长和面积公式混淆"}],description:"常见几何图形的认识与周长面积"},
+  {id:"app-word-problem-easy",name:"简单应用题",grade:"3",category:"应用",prerequisites:["arith-int-add"],keywords:["应用题","文字题","简单应用"],commonErrors:[{type:"审题错误",pattern:"未读懂题意"},{type:"数量关系",pattern:"数量关系判断错误"}],description:"一步计算的应用题"},
+  {id:"app-word-problem",name:"复合应用题",grade:"5",category:"应用",prerequisites:["arith-int-mult","app-word-problem-easy"],keywords:["应用题","文字题","多步","复合"],commonErrors:[{type:"多步逻辑",pattern:"多步推理遗漏步骤"},{type:"中间量",pattern:"未找到中间量"}],description:"多步计算的复合应用题"},
+
+  // 初中 (7-9年级)
+  {id:"algebra-expression",name:"代数式",grade:"7",category:"代数",prerequisites:["arith-int-mult"],keywords:["代数式","单项式","多项式","系数","次数","同类项","合并"],commonErrors:[{type:"同类项判断",pattern:"同类项判断错误"},{type:"合并同类项",pattern:"合并同类项运算错误"}],description:"单项式、多项式及合并同类项"},
+  {id:"algebra-equation-linear",name:"一元一次方程",grade:"7",category:"代数",prerequisites:["algebra-expression","arith-int-add"],keywords:["方程","一元一次","解方程","移项","合并同类项","去括号","去分母"],commonErrors:[{type:"移项忘变号",pattern:"移项时未改变符号"},{type:"去括号符号",pattern:"去括号时符号错误"},{type:"去分母遗漏",pattern:"去分母时漏乘不含分母的项"}],description:"含一个未知数、未知数次数为1的方程"},
+  {id:"algebra-inequality-linear",name:"一元一次不等式",grade:"7",category:"代数",prerequisites:["algebra-equation-linear"],keywords:["不等式","一元一次","解不等式","不等号","变号"],commonErrors:[{type:"变号遗漏",pattern:"两边乘除负数时不变号"},{type:"解集表示",pattern:"解集表示错误"}],description:"一元一次不等式及不等式组"},
+  {id:"algebra-equation-two-var",name:"二元一次方程组",grade:"8",category:"代数",prerequisites:["algebra-equation-linear"],keywords:["二元一次","方程组","代入消元","加减消元","消元"],commonErrors:[{type:"消元选择",pattern:"消元方法选择不当"},{type:"代入计算",pattern:"代入后计算错误"}],description:"二元一次方程组的解法"},
+  {id:"algebra-equation-quadratic",name:"一元二次方程",grade:"9",category:"代数",prerequisites:["algebra-equation-linear","arith-fraction-basic"],keywords:["一元二次","方程","求根公式","韦达定理","判别式","配方法","因式分解法"],commonErrors:[{type:"求根公式记忆",pattern:"求根公式记忆错误"},{type:"判别式判断",pattern:"判别式计算或判断错误"},{type:"因式分解",pattern:"因式分解方法选择不当"}],description:"一元二次方程的解法及应用"},
+  {id:"algebra-function-linear",name:"一次函数",grade:"8",category:"代数",prerequisites:["algebra-equation-linear"],keywords:["一次函数","直线","斜率","截距","y=kx+b","图像"],commonErrors:[{type:"斜率截距",pattern:"斜率和截距概念混淆"},{type:"图像判断",pattern:"由解析式判断图像特征错误"}],description:"一次函数的图像与性质"},
+  {id:"algebra-function-quadratic",name:"二次函数",grade:"9",category:"代数",prerequisites:["algebra-function-linear","algebra-equation-quadratic"],keywords:["二次函数","抛物线","顶点","对称轴","开口","y=ax²+bx+c"],commonErrors:[{type:"顶点公式",pattern:"顶点坐标公式记忆错误"},{type:"开口方向",pattern:"a的正负与开口方向关系混淆"}],description:"二次函数的图像与性质"},
+  {id:"algebra-factorization",name:"因式分解",grade:"8",category:"代数",prerequisites:["algebra-expression"],keywords:["因式分解","提公因式","公式法","十字相乘","完全平方","平方差"],commonErrors:[{type:"分解不彻底",pattern:"因式分解不彻底"},{type:"公式选择",pattern:"公式法选择错误"}],description:"提公因式法、公式法等因式分解"},
+  {id:"algebra-power",name:"幂的运算",grade:"8",category:"代数",prerequisites:["algebra-expression"],keywords:["幂","指数","同底数幂","乘法","除法","幂的乘方","积的乘方"],commonErrors:[{type:"指数运算",pattern:"幂的运算法则混淆"},{type:"负指数",pattern:"负整数指数幂处理错误"}],description:"同底数幂乘除、幂的乘方、积的乘方"},
+  {id:"geo-triangle",name:"三角形",grade:"7",category:"几何",prerequisites:["geo-basic-shape"],keywords:["三角形","内角","外角","全等","相似","边角关系"],commonErrors:[{type:"全等判定",pattern:"全等三角形判定条件不足"},{type:"角度计算",pattern:"内外角关系计算错误"}],description:"三角形的基本性质、全等与相似"},
+  {id:"geo-quadrilateral",name:"四边形",grade:"8",category:"几何",prerequisites:["geo-triangle"],keywords:["平行四边形","矩形","菱形","正方形","梯形","中位线"],commonErrors:[{type:"性质混淆",pattern:"特殊四边形性质混淆"},{type:"判定条件",pattern:"判定条件遗漏"}],description:"平行四边形及特殊四边形的性质与判定"},
+  {id:"geo-circle",name:"圆",grade:"9",category:"几何",prerequisites:["geo-triangle"],keywords:["圆","半径","直径","弧","弦","切线","圆心角","圆周角"],commonErrors:[{type:"角度关系",pattern:"圆心角圆周角关系混淆"},{type:"切线判定",pattern:"切线判定条件不足"}],description:"圆的有关性质与计算"},
+  {id:"geo-trig-basic",name:"锐角三角函数",grade:"9",category:"几何",prerequisites:["geo-triangle","arith-fraction-basic"],keywords:["三角函数","sin","cos","tan","直角三角形","锐角"],commonErrors:[{type:"函数定义",pattern:"三角函数定义记忆错误"},{type:"特殊值",pattern:"特殊角的三角函数值记忆错误"}],description:"锐角三角函数的定义与计算"},
+  {id:"data-stat-basic",name:"统计基础",grade:"7",category:"数据",prerequisites:["arith-int-add"],keywords:["平均数","中位数","众数","方差","统计","频数"],commonErrors:[{type:"概念混淆",pattern:"平均数中位数众数概念混淆"}],description:"数据的收集与整理、统计量"},
+  {id:"data-probability",name:"概率初步",grade:"9",category:"数据",prerequisites:["arith-fraction-basic","data-stat-basic"],keywords:["概率","频率","随机事件","必然事件","不可能事件","树形图"],commonErrors:[{type:"概率计算",pattern:"概率计算方法错误"},{type:"枚举遗漏",pattern:"列举所有可能结果遗漏"}],description:"随机事件与概率的计算"},
+
+  // 高中 (10-12年级)
+  {id:"algebra-set",name:"集合",grade:"10",category:"代数",prerequisites:["algebra-expression"],keywords:["集合","子集","交集","并集","补集","属于","包含"],commonErrors:[{type:"符号混淆",pattern:"属于与包含符号混淆"},{type:"运算错误",pattern:"集合交并补运算错误"}],description:"集合的概念与运算"},
+  {id:"algebra-function-adv",name:"函数综合",grade:"10",category:"代数",prerequisites:["algebra-function-quadratic"],keywords:["函数","定义域","值域","单调性","奇偶性","反函数","映射"],commonErrors:[{type:"定义域遗漏",pattern:"求定义域时遗漏限制条件"},{type:"性质判断",pattern:"单调性奇偶性判断错误"}],description:"函数的定义域、值域、性质"},
+  {id:"algebra-sequence",name:"数列",grade:"11",category:"代数",prerequisites:["algebra-function-adv","arith-int-mult"],keywords:["数列","等差","等比","通项","前n项和","递推"],commonErrors:[{type:"公式记忆",pattern:"等差等比通项求和公式混淆"},{type:"递推转化",pattern:"递推关系转通项困难"}],description:"等差数列与等比数列"},
+  {id:"algebra-trig-adv",name:"三角函数",grade:"10",category:"代数",prerequisites:["geo-trig-basic"],keywords:["三角函数","正弦","余弦","正切","诱导公式","图像","周期"],commonErrors:[{type:"诱导公式",pattern:"诱导公式记忆或运用错误"},{type:"图像变换",pattern:"三角函数图像变换顺序错误"}],description:"三角函数的图像与性质"},
+  {id:"algebra-vector",name:"向量",grade:"10",category:"代数",prerequisites:["algebra-trig-adv"],keywords:["向量","加减","数量积","坐标","模","平行","垂直"],commonErrors:[{type:"坐标运算",pattern:"向量坐标运算错误"},{type:"数量积",pattern:"数量积计算错误"}],description:"平面向量的运算与应用"},
+  {id:"geo-solid",name:"立体几何",grade:"10",category:"几何",prerequisites:["geo-triangle"],keywords:["立体几何","棱柱","棱锥","球","线面关系","平行","垂直","二面角"],commonErrors:[{type:"空间想象",pattern:"空间关系判断错误"},{type:"证明逻辑",pattern:"线面平行垂直证明逻辑不严密"}],description:"空间几何体与线面关系"},
+  {id:"algebra-derivative",name:"导数",grade:"11",category:"代数",prerequisites:["algebra-function-adv"],keywords:["导数","求导","导数公式","极值","最值","单调性","切线"],commonErrors:[{type:"求导公式",pattern:"求导公式记忆错误"},{type:"极值判断",pattern:"极值点判断条件遗漏"}],description:"导数的概念、运算与应用"},
+  {id:"algebra-prob-adv",name:"概率统计进阶",grade:"11",category:"数据",prerequisites:["data-probability","algebra-set"],keywords:["条件概率","独立","分布","期望","方差","正态分布"],commonErrors:[{type:"条件概率",pattern:"条件概率与独立事件混淆"},{type:"分布选择",pattern:"分布类型判断错误"}],description:"条件概率、常见分布与统计推断"},
+];
+
+// ============================================================
+//  STORAGE KEYS (user-scoped)
+// ============================================================
+const SK={
+  settings:'errorbook_settings',  // global, not user-scoped
+  questions:'errorbook_questions',
+  analysis:'errorbook_analysis',
+  dialogs:'errorbook_dialogs',
+  practice:'errorbook_practice',
+  mastery:'errorbook_mastery',
+  weekly:'errorbook_weekly',
+  blockpoints:'errorbook_blockpoints',
+  users:'errorbook_users',         // global user registry
+  currentUser:'errorbook_currentUser' // global current user id
+};
+
+// ============================================================
+//  USER MANAGEMENT
+// ============================================================
+let CURRENT_USER_ID = null;
+
+function getCurrentUser() {
+  const users = loadGlobal(SK.users) || [];
+  return users.find(u => u.id === CURRENT_USER_ID);
+}
+
+function loadGlobal(key) { try { return JSON.parse(localStorage.getItem(key)) } catch(e) { return null } }
+function storeGlobal(key, data) { localStorage.setItem(key, JSON.stringify(data)) }
+
+// User-scoped storage: prefix key with userId
+function userKey(key) { return CURRENT_USER_ID ? CURRENT_USER_ID + '_' + key : key }
+function store(key, data) { localStorage.setItem(userKey(key), JSON.stringify(data)) }
+function load(key) { try { return JSON.parse(localStorage.getItem(userKey(key))) } catch(e) { return null } }
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function toast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+function showModal(html){document.getElementById('modal-content').innerHTML=html;document.getElementById('modal-overlay').classList.add('active')}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('active')}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
+function formatDate(d){return new Date(d).toLocaleDateString('zh-CN',{month:'short',day:'numeric'})}
+
+// Avatar selection state
+let selectedAvatar = '🧒';
+function pickAvatar(el, emoji) {
+  selectedAvatar = emoji;
+  document.querySelectorAll('.avatar-option').forEach(a => a.style.borderColor = 'transparent');
+  el.style.borderColor = 'var(--primary)';
+}
+
+function showNewUserForm() {
+  document.getElementById('new-user-form').style.display = 'block';
+  // Default avatar selection
+  selectedAvatar = '🧒';
+  document.querySelectorAll('.avatar-option').forEach(a => {
+    a.style.borderColor = a.textContent === '🧒' ? 'var(--primary)' : 'transparent';
+  });
+}
+
+function createNewUser() {
+  const name = document.getElementById('new-user-name').value.trim();
+  const grade = document.getElementById('new-user-grade').value;
+  if (!name) { toast('请输入名字', 'error'); return }
+  const users = loadGlobal(SK.users) || [];
+  // Check duplicate name
+  if (users.find(u => u.name === name)) { toast('这个名字已经存在了', 'error'); return }
+  const newUser = {
+    id: uid(),
+    name: name,
+    grade: grade,
+    avatar: selectedAvatar,
+    createdAt: Date.now()
+  };
+  users.push(newUser);
+  storeGlobal(SK.users, users);
+  loginAs(newUser.id);
+}
+
+function loginAs(userId) {
+  CURRENT_USER_ID = userId;
+  storeGlobal(SK.currentUser, userId);
+  const user = getCurrentUser();
+  // Update sidebar user display
+  document.getElementById('sidebar-avatar').textContent = user?.avatar || '🧒';
+  document.getElementById('sidebar-username').textContent = user?.name || '未知';
+  document.getElementById('sidebar-usergrade').textContent = user?.grade ? user.grade + '年级' : '';
+  // Hide login screen
+  document.getElementById('login-screen').style.display = 'none';
+  // Refresh all data for this user
+  refreshDashboard();
+  refreshWeekly();
+  toast('欢迎，' + (user?.name || '') + '！', 'success');
+}
+
+function switchUser() {
+  // Show the login screen for user selection
+  renderUserList();
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('new-user-form').style.display = 'none';
+}
+
+function deleteUser(userId) {
+  const users = loadGlobal(SK.users) || [];
+  const idx = users.findIndex(u => u.id === userId);
+  if (idx >= 0) {
+    users.splice(idx, 1);
+    storeGlobal(SK.users, users);
+    // Remove all user-scoped data
+    const keysToRemove = [SK.questions, SK.analysis, SK.dialogs, SK.practice, SK.mastery, SK.weekly, SK.blockpoints];
+    keysToRemove.forEach(k => localStorage.removeItem(userId + '_' + k));
+    if (CURRENT_USER_ID === userId) {
+      CURRENT_USER_ID = null;
+      storeGlobal(SK.currentUser, null);
+      // Force re-show login screen
+      document.getElementById('login-screen').style.display = 'flex';
+      renderUserList();
+    }
+    toast('用户已删除');
+    renderUserList();
+  }
+}
+
+function renderUserList() {
+  const users = loadGlobal(SK.users) || [];
+  const container = document.getElementById('user-list');
+  if (!users.length) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px">还没有用户，点击下方创建</div>';
+    return;
+  }
+  let html = '';
+  users.forEach(u => {
+    // Count errors for this user
+    const questions = loadGlobal(u.id + '_' + SK.questions) || [];
+    html += `<div class="user-card" onclick="loginAs('${u.id}')">
+      <div class="uc-avatar" style="background:${u.id===CURRENT_USER_ID?'var(--accent)':'var(--border)'}">${u.avatar}</div>
+      <div class="uc-info">
+        <div class="uc-name">${u.name} ${u.id===CURRENT_USER_ID?'<span style="color:var(--accent);font-size:11px">● 当前</span>':''}</div>
+        <div class="uc-meta">${u.grade}年级 · 创建于${formatDate(u.createdAt)}</div>
+      </div>
+      <div class="uc-errors">${questions.length}错题</div>
+      <button class="btn btn-danger btn-sm" style="padding:2px 6px;font-size:10px;margin-left:4px" onclick="event.stopPropagation();confirmDeleteUser('${u.id}','${u.name}')">🗑️</button>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function confirmDeleteUser(userId, userName) {
+  showModal(`<h3 style="margin-bottom:16px">⚠️ 确认删除用户"${userName}"？</h3>
+    <p style="color:var(--danger);margin-bottom:16px">该用户的所有错题数据将被永久删除！</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-danger" onclick="closeModal();deleteUser('${userId}')">确认删除</button>
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+    </div>`);
+}
+
+// ============================================================
+//  PAGE NAVIGATION
+// ============================================================
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    n.classList.toggle('active',n.dataset.page===name);
+  });
+  // Refresh data on page switch
+  if(name==='dashboard')refreshDashboard();
+  if(name==='errorbook')renderErrorBook();
+  if(name==='socratic')refreshSocraticSelect();
+  if(name==='practice')refreshPracticeSelect();
+  if(name==='weekly')refreshWeekly();
+  if(name==='analysis')refreshAnalysis();
+  if(name==='blockpoint')refreshBlockpoint();
+  // Close mobile sidebar
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+// ============================================================
+//  UPLOAD FUNCTIONS
+// ============================================================
+function switchUploadTab(tab){
+  document.querySelectorAll('.tabs .tab-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('upload-text-tab').style.display=tab==='text'?'block':'none';
+  document.getElementById('upload-image-tab').style.display=tab==='image'?'block':'none';
+}
+
+function handleImageUpload(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  if(file.size>5*1024*1024){toast('图片不能超过5MB','error');return}
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const preview=document.getElementById('upload-preview');
+    preview.src=ev.target.result;preview.style.display='block';
+    document.getElementById('upload-area').classList.add('dragging');
+  };
+  reader.readAsDataURL(file);
+}
+
+// Drag & drop
+const uploadArea=document.getElementById('upload-area');
+if(uploadArea){
+  uploadArea.addEventListener('dragover',e=>{e.preventDefault();uploadArea.classList.add('dragging')});
+  uploadArea.addEventListener('dragleave',()=>uploadArea.classList.remove('dragging'));
+  uploadArea.addEventListener('drop',e=>{
+    e.preventDefault();uploadArea.classList.remove('dragging');
+    const file=e.dataTransfer.files[0];
+    if(file&&file.type.startsWith('image/')){
+      document.getElementById('file-input').files=e.dataTransfer.files;
+      handleImageUpload({target:{files:[file]}});
+    }
+  });
+}
+
+function submitError(){
+  const q=document.getElementById('upload-question').value.trim();
+  const w=document.getElementById('upload-wrong').value.trim();
+  const c=document.getElementById('upload-correct').value.trim();
+  const g=document.getElementById('upload-grade').value;
+  const r=document.getElementById('upload-reason').value;
+  if(!q){toast('请输入原题内容','error');return}
+  if(!w){toast('请输入错误答案','error');return}
+  const item={id:uid(),type:'text',question:q,wrongAnswer:w,correctAnswer:c,grade:g,selfReason:r,status:'unresolved',createdAt:Date.now()};
+  const questions=load(SK.questions)||[];
+  questions.unshift(item);
+  store(SK.questions,questions);
+  toast('错题已录入，开始AI分析...');
+  // Clear form
+  document.getElementById('upload-question').value='';
+  document.getElementById('upload-wrong').value='';
+  document.getElementById('upload-correct').value='';
+  analyzeError(item);
+}
+
+function submitImageError(){
+  const preview=document.getElementById('upload-preview');
+  if(!preview.src||preview.style.display==='none'){toast('请先上传图片','error');return}
+  const g=document.getElementById('upload-grade-img').value;
+  const item={id:uid(),type:'image',imageData:preview.src,question:'',wrongAnswer:'',correctAnswer:'',grade:g,selfReason:'',status:'unresolved',createdAt:Date.now()};
+  const questions=load(SK.questions)||[];
+  questions.unshift(item);
+  store(SK.questions,questions);
+  toast('图片已上传，AI正在识别...');
+  analyzeError(item);
+}
+
+// ============================================================
+//  AI API LAYER
+// ============================================================
+function getSettings(){return loadGlobal(SK.settings)||{apiUrl:'https://api.deepseek.com/v1',apiKey:'',model:'deepseek-chat'}}
+
+async function callAI(messages){
+  const s=getSettings();
+  if(!s.apiKey){showModal(`<h3 style="margin-bottom:16px">🔑 需要配置API Key</h3><p style="color:var(--text-light);margin-bottom:16px">请先在设置页面配置AI API Key，才能使用智能分析功能。</p><button class="btn btn-primary btn-block" onclick="closeModal();showPage('settings')">前往设置</button>`);throw new Error('No API key')}
+  try{
+    const resp=await fetch(s.apiUrl+'/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.apiKey},
+      body:JSON.stringify({model:s.model,messages,temperature:0.7,max_tokens:2000})
+    });
+    if(!resp.ok){const err=await resp.text();throw new Error('API错误: '+resp.status+' '+err)}
+    const data=await resp.json();
+    return data.choices[0].message.content;
+  }catch(e){
+    toast('AI调用失败: '+e.message,'error');
+    throw e;
+  }
+}
+
+// Prompt templates
+const PROMPTS={
+  analyzeError:(item)=>[
+    {role:'system',content:`你是一位数学教育专家。请分析学生的错题，返回JSON格式结果。
+必须包含以下字段：
+- question: 原题内容（如果是图片请识别）
+- wrongAnswer: 学生的错误答案
+- correctAnswer: 正确答案（如果能推断）
+- errorType: 错误类型（concept概念理解/calc计算失误/method思路偏差/read审题不清/memory公式遗忘）
+- knowledgePoints: [{id:"知识点ID",name:"知识点名称",relevance:0.9}] - 关联的知识点（必须从以下列表中选择）
+- errorAnalysis: 错误的详细分析（为什么错）
+- hint: 给学生的简短提示
+
+可选知识点列表：
+${KNOWLEDGE_TREE.map(k=>k.id+':'+k.name+'(年级'+k.grade+')').join('\n')}
+
+只返回JSON，不要其他文字。`},
+    {role:'user',content: item.type==='image'?
+      `[图片错题，请识别图片中的数学题目]\n年级: ${item.grade}\n学生自评原因: ${item.selfReason||'未知'}\n请识别图片中的题目、学生答案，并分析错误。` :
+      `原题: ${item.question}\n学生答案: ${item.wrongAnswer}\n正确答案: ${item.correctAnswer||'未知'}\n年级: ${item.grade}\n学生自评原因: ${item.selfReason||'未知'}\n请分析这道错题。`}
+  ],
+
+  blockpoint:(analysis)=>[
+    {role:'system',content:`你是一位数学学习诊断专家。根据错题分析结果，诊断学生的学习卡点。
+返回JSON格式：
+- blockpoints: [{knowledgeId:"知识点ID",type:"prerequisite前置缺失/understanding理解偏差/application应用不足",explanation:"卡点解释",suggestion:"突破建议"}]
+- prerequisiteChain: ["前置知识1","前置知识2"] - 需要回溯的前置知识链
+- severity: 严重程度(1-5)
+只返回JSON。`},
+    {role:'user',content:`错题分析结果: ${JSON.stringify(analysis)}\n请诊断学习卡点。`}
+  ],
+
+  socraticStart:(errorItem,analysis)=>[
+    {role:'system',content:`你是一位苏格拉底式数学辅导老师。你不直接给出答案，而是通过一系列引导性问题帮助学生自己发现解题思路。
+规则：
+1. 每次只问一个问题
+2. 问题要循序渐进：先确认理解→引导关注关键条件→启发推理→验证思路
+3. 如果学生回答有偏差，温和地引导回正轨
+4. 最多8轮对话
+5. 用适合${errorItem.grade}年级学生的语言
+当前错题: ${errorItem.question||'(图片错题)'}
+分析: ${JSON.stringify(analysis)}
+请开始第一轮苏格拉底引导，问第一个问题。直接输出问题文字，不要JSON格式。`},
+    {role:'user',content:'老师，这道题我做错了，能帮我找到思路吗？'}
+  ],
+
+  socraticContinue:(history)=>[
+    {role:'system',content:`你是一位苏格拉底式数学辅导老师。根据学生回答继续引导。
+规则：
+1. 先简要肯定或纠正学生的回答
+2. 然后提出下一个引导性问题
+3. 逐步引导学生接近正确思路
+4. 如果学生已经理解了核心思路，给予肯定并总结
+直接输出引导文字。`},
+    ...history
+  ],
+
+  generatePractice:(knowledgeId,grade)=>[
+    {role:'system',content:`你是一位数学出题专家。请针对知识点"${KNOWLEDGE_TREE.find(k=>k.id===knowledgeId)?.name||knowledgeId}"生成3道练习题。
+返回JSON格式：
+- questions: [{difficulty:1/2/3,content:"题目内容",options:["A选项","B选项","C选项","D选项"]或null(填空题),answer:"正确答案",explanation:"解题过程",type:"choice选择题/fill填空题/calc计算题"}]
+难度说明：1=同难度巩固，2=稍有提升，3=变式拓展
+年级: ${grade}
+只返回JSON。`},
+    {role:'user',content:`请生成练习题。`}
+  ],
+
+  judgePractice:(question,studentAnswer)=>[
+    {role:'system',content:`你是一位数学判题老师。判断学生的答案是否正确。
+返回JSON格式：
+- correct: true/false
+- score: 0-100(部分正确给部分分)
+- feedback: 反馈文字
+- solution: 正确解法(如果学生答错)
+只返回JSON。`},
+    {role:'user',content:`题目: ${question}\n学生答案: ${studentAnswer}\n请判断。`}
+  ],
+
+  weeklySummary:(weeklyData)=>[
+    {role:'system',content:`你是一位数学学习规划专家。根据本周错题数据，生成巩固练习建议。
+返回JSON格式：
+- summary: 本周学习总结文字
+- focusPoints: ["重点巩固知识点1","重点巩固知识点2"]
+- exercises: [{title:"练习标题",knowledgeIds:["知识点ID"],questionCount:5,difficulty:"基础/中等/综合",description:"练习说明"}]
+- advice: 学习建议
+只返回JSON。`},
+    {role:'user',content:`本周错题数据: ${JSON.stringify(weeklyData)}\n请生成巩固建议。`}
+  ]
+};
+
+// ============================================================
+//  ERROR ANALYSIS
+// ============================================================
+async function analyzeError(item){
+  toast('AI正在分析错题...','warning');
+  try{
+    // If image, use vision capability
+    let messages;
+    if(item.type==='image'){
+      const s=getSettings();
+      messages=[
+        {role:'system',content:PROMPTS.analyzeError(item)[0].content},
+        {role:'user',content:[
+          {type:'text',text:`[图片错题]\n年级: ${item.grade}\n学生自评原因: ${item.selfReason||'未知'}\n请识别图片中的数学题目和答案，并分析错误。`},
+          {type:'image_url',image_url:{url:item.imageData}}
+        ]}
+      ];
+      // Some APIs don't support vision, fallback
+      let result;
+      try{
+        const resp=await fetch(s.apiUrl+'/chat/completions',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.apiKey},
+          body:JSON.stringify({model:s.model,messages,temperature:0.7,max_tokens:2000})
+        });
+        const data=await resp.json();
+        result=data.choices[0].message.content;
+      }catch(e){
+        // Fallback to text-only
+        result=await callAI(PROMPTS.analyzeError(item));
+      }
+      processAnalysisResult(item.id,result);
+    }else{
+      const result=await callAI(PROMPTS.analyzeError(item));
+      processAnalysisResult(item.id,result);
+    }
+  }catch(e){
+    console.error('分析失败:',e);
+  }
+}
+
+function processAnalysisResult(itemId,rawResult){
+  let analysis;
+  try{
+    // Extract JSON from possible markdown wrapper
+    const jsonMatch=rawResult.match(/\{[\s\S]*\}/);
+    analysis=jsonMatch?JSON.parse(jsonMatch[0]):JSON.parse(rawResult);
+  }catch(e){
+    analysis={rawText:rawResult,errorType:'unknown',knowledgePoints:[],errorAnalysis:rawResult};
+  }
+  // Store analysis
+  const allAnalysis=load(SK.analysis)||[];
+  allAnalysis.push({itemId,analysis,createdAt:Date.now()});
+  store(SK.analysis,allAnalysis);
+  // Update mastery based on knowledge points
+  updateMastery(analysis.knowledgePoints||[],itemId);
+  toast('错题分析完成！','success');
+  showPage('analysis');
+  refreshAnalysis();
+}
+
+function updateMastery(knowledgePoints,itemId){
+  const mastery=load(SK.mastery)||{};
+  knowledgePoints.forEach(kp=>{
+    const kid=kp.id||kp.knowledgeId;
+    if(!mastery[kid])mastery[kid]={level:0,errorCount:0,practiceCount:0,correctCount:0,lastError:Date.now(),errors:[]};
+    mastery[kid].errorCount++;
+    mastery[kid].errors.push(itemId);
+    mastery[kid].lastError=Date.now();
+    // Recalculate level
+    mastery[kid].level=calcMasteryLevel(mastery[kid]);
+  });
+  store(SK.mastery,mastery);
+}
+
+function calcMasteryLevel(m){
+  // Weighted: errorStatus 50% + practiceAccuracy 30% + timeDecay 20%
+  const errorWeight=m.errorCount>0?Math.max(0,1-m.errorCount*0.15):1;
+  const practiceWeight=m.practiceCount>0?(m.correctCount/m.practiceCount):0;
+  const daysSinceLastError=Math.floor((Date.now()-m.lastError)/86400000);
+  const timeWeight=Math.max(0,1-daysSinceLastError*0.05);
+  const score=errorWeight*0.5+practiceWeight*0.3+timeWeight*0.2;
+  if(score>=0.8)return 5; // mastered
+  if(score>=0.6)return 3; // improving
+  if(score>=0.4)return 2; // weak
+  if(score>=0.2)return 1; // blocked
+  return 0; // unknown
+}
+
+// ============================================================
+//  ANALYSIS PAGE
+// ============================================================
+function refreshAnalysis(){
+  const analyses=load(SK.analysis)||[];
+  const questions=load(SK.questions)||[];
+  const container=document.getElementById('analysis-content');
+  if(analyses.length===0){
+    container.innerHTML='<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">还没有分析结果，请先上传错题</div><button class="btn btn-primary" onclick="showPage(\'upload\')">📝 上传错题</button></div>';
+    return;
+  }
+  let html='';
+  analyses.reverse().forEach(a=>{
+    const q=questions.find(q=>q.id===a.itemId);
+    const an=a.analysis;
+    html+=`<div class="card fade-in" style="margin-bottom:16px">
+      <div class="card-title">${q?.type==='image'?'📷 图片错题':'📝'} ${an.question||q?.question||'未知题目'} <span class="tag ${errorTypeTag(an.errorType)}">${errorTypeLabel(an.errorType)}</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div><span class="form-label">❌ 你的答案</span><div style="padding:8px;background:rgba(231,76,60,0.05);border-radius:6px;font-size:13px">${an.wrongAnswer||q?.wrongAnswer||'未知'}</div></div>
+        <div><span class="form-label">✅ 正确答案</span><div style="padding:8px;background:rgba(46,204,113,0.05);border-radius:6px;font-size:13px">${an.correctAnswer||q?.correctAnswer||'未知'}</div></div>
+      </div>
+      <div style="margin-bottom:12px"><span class="form-label">📊 错误分析</span><div style="font-size:13px;line-height:1.8;margin-top:6px">${an.errorAnalysis||an.rawText||'暂无分析'}</div></div>
+      <div style="margin-bottom:12px"><span class="form-label">🔗 关联知识点</span>
+        <div style="display:flex;gap:6px;margin-top:6px">${(an.knowledgePoints||[]).map(kp=>`<span class="tag primary">${kp.name||kp.id}</span>`).join('')}</div>
+      </div>
+      ${an.hint?`<div><span class="form-label">💡 提示</span><div style="font-size:13px;color:var(--accent);margin-top:6px">${an.hint}</div></div>`:''}
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn btn-accent btn-sm" onclick="diagnoseBlockpoint('${a.itemId}')">⚡ 诊断卡点</button>
+        <button class="btn btn-outline btn-sm" onclick="startSocraticFor('${a.itemId}')">🧠 苏格拉底引导</button>
+        <button class="btn btn-outline btn-sm" onclick="generatePracticeFor('${a.itemId}')">💪 举一反三</button>
+      </div>
+    </div>`;
+  });
+  container.innerHTML=html;
+}
+
+function errorTypeLabel(t){return{concept:'概念理解错误',calc:'计算失误',method:'思路偏差',read:'审题不清',memory:'公式遗忘'}[t]||'其他'}
+function errorTypeTag(t){return{concept:'danger',calc:'warning',method:'primary',read:'accent',memory:'warning'}[t]||'primary'}
+
+// ============================================================
+//  BLOCKPOINT DIAGNOSIS
+// ============================================================
+async function diagnoseBlockpoint(itemId){
+  toast('正在诊断卡点...','warning');
+  const analyses=load(SK.analysis)||[];
+  const a=analyses.find(a=>a.itemId===itemId);
+  if(!a){toast('请先分析该错题','error');return}
+  try{
+    const result=await callAI(PROMPTS.blockpoint(a.analysis));
+    let bp;
+    try{const jsonMatch=result.match(/\{[\s\S]*\}/);bp=JSON.parse(jsonMatch[0])}catch(e){bp={rawText:result,blockpoints:[],prerequisiteChain:[]}}
+    // Store blockpoint data
+    const bps=load(SK.blockpoints)||[];
+    bps.push({itemId,blockpoint:bp,createdAt:Date.now()});
+    store(SK.blockpoints,bps);
+    toast('卡点诊断完成！','success');
+    showPage('blockpoint');
+    refreshBlockpoint();
+  }catch(e){console.error(e)}
+}
+
+function refreshBlockpoint(){
+  const bps=load(SK.blockpoints)||[];
+  const analyses=load(SK.analysis)||[];
+  const questions=load(SK.questions)||[];
+  const mastery=load(SK.mastery)||{};
+  const container=document.getElementById('blockpoint-content');
+  if(bps.length===0&&Object.keys(mastery).length===0){
+    container.innerHTML='<div class="empty-state"><div class="empty-icon">⚡</div><div class="empty-text">暂无卡点数据，请先分析错题</div><button class="btn btn-primary" onclick="showPage(\'upload\')">📝 上传错题</button></div>';
+    return;
+  }
+  // Render knowledge tree with status
+  let treeHTML='<div class="card"><div class="card-title">🌲 知识点树（卡点标记）</div><div class="ktree">';
+  const gradeGroup=(load(SK.settings)||{}).gradeTheme||'7-9';
+  const gradeRange=gradeGroup==='3-6'?[3,4,5,6]:gradeGroup==='7-9'?[7,8,9]:[10,11,12];
+  const filteredTree=KNOWLEDGE_TREE.filter(k=>gradeRange.includes(parseInt(k.grade)));
+  filteredTree.forEach(k=>{
+    const m=mastery[k.id];
+    const level=m?.level||0;
+    let cls=level===0?'':level<=1?'blocked':level<=2?'weak':level>=5?'mastered':'';
+    treeHTML+=`<div class="ktree-node ${cls}" onclick="showBlockpointDetail('${k.id}')">
+      <span>${k.name}</span>
+      <span class="tag ${level<=1?'danger':level<=2?'warning':level>=5?'success':'primary'}">${level<=1?'⚡':level<=2?'⚠':level>=5?'✅':'🔄'} ${k.grade}年级</span>
+    </div>`;
+  });
+  treeHTML+='</div></div>';
+  // Render detailed blockpoints
+  let bpHTML='';
+  bps.reverse().forEach(bp=>{
+    const q=questions.find(q=>q.id===bp.itemId);
+    const b=bp.blockpoint;
+    bpHTML+=`<div class="card fade-in" style="margin-bottom:12px">
+      <div class="card-title">⚡ 卡点诊断 · ${q?.question?.slice(0,30)||'错题'}...</div>
+      ${(b.blockpoints||[]).map(bl=>`<div style="padding:12px;background:rgba(231,76,60,0.03);border-radius:8px;margin-bottom:8px">
+        <div style="font-weight:600;margin-bottom:4px">${bl.type==='prerequisite'?'前置知识缺失':bl.type==='understanding'?'理解偏差':'应用不足'} → <span class="tag danger">${bl.knowledgeId||bl.knowledgePoint||''}</span></div>
+        <div style="font-size:13px">${bl.explanation||''}</div>
+        <div style="font-size:12px;color:var(--accent);margin-top:4px">💡 ${bl.suggestion||''}</div>
+      </div>`).join('')}
+      ${b.prerequisiteChain?.length?`<div style="margin-top:8px"><span class="form-label">前置知识链</span><div style="display:flex;gap:4px;margin-top:4px">${b.prerequisiteChain.map(p=>`<span class="tag warning">${p}</span>`).join('→')}</div></div>`:''}
+    </div>`;
+  });
+  container.innerHTML=treeHTML+bpHTML;
+}
+
+function showBlockpointDetail(kid){
+  const k=KNOWLEDGE_TREE.find(k=>k.id===kid);
+  if(!k)return;
+  const mastery=load(SK.mastery)||{};
+  const m=mastery[kid]||{level:0,errorCount:0};
+  showModal(`<h3 style="margin-bottom:12px">${k.name}</h3>
+    <div style="font-size:13px;color:var(--text-light);margin-bottom:16px">${k.description}</div>
+    <div style="margin-bottom:12px"><span class="form-label">掌握程度</span>
+      <div class="progress-bar" style="margin-top:6px"><div class="progress-fill ${m.level<=1?'danger':m.level<=3?'warning':'success'}" style="width:${m.level*20}%"></div></div>
+    </div>
+    <div style="margin-bottom:12px"><span class="form-label">常见错误</span>
+      ${k.commonErrors.map(e=>`<div class="tag danger" style="margin:4px">${e.type}: ${e.pattern}</div>`).join('')}
+    </div>
+    <div style="margin-bottom:12px"><span class="form-label">前置知识</span>
+      ${k.prerequisites.map(p=>{const pk=KNOWLEDGE_TREE.find(t=>t.id===p);return`<span class="tag accent">${pk?.name||p}</span>`}).join(' ')}
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-accent btn-sm" onclick="closeModal();generatePracticeForKP('${kid}')">💪 练习巩固</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">关闭</button>
+    </div>`);
+}
+
+// ============================================================
+//  SOCRATIC GUIDANCE
+// ============================================================
+function refreshSocraticSelect(){
+  const questions=load(SK.questions)||[];
+  const analyses=load(SK.analysis)||[];
+  const sel=document.getElementById('socratic-error-select');
+  sel.innerHTML='<option value="">-- 请选择错题 --</option>';
+  questions.forEach(q=>{
+    const hasAnalysis=analyses.find(a=>a.itemId===q.id);
+    const label=q.type==='image'?'📷 图片错题':q.question.slice(0,40);
+    sel.innerHTML+=`<option value="${q.id}" ${hasAnalysis?'':'disabled'}>${label}${hasAnalysis?'':' (未分析)'}</option>`;
+  });
+  // Reset chat
+  document.getElementById('socratic-chat').style.display='none';
+}
+
+async function startSocratic(){
+  const sel=document.getElementById('socratic-error-select');
+  const itemId=sel.value;
+  if(!itemId){toast('请先选择一道错题','error');return}
+  await startSocraticFor(itemId);
+}
+
+async function startSocraticFor(itemId){
+  const questions=load(SK.questions)||[];
+  const analyses=load(SK.analysis)||[];
+  const item=questions.find(q=>q.id===itemId);
+  const a=analyses.find(a=>a.itemId===itemId);
+  if(!item){toast('找不到该错题','error');return}
+  toast('苏格拉底引导开始...','warning');
+  showPage('socratic');
+  document.getElementById('socratic-error-select').value=itemId;
+  document.getElementById('socratic-chat').style.display='block';
+  document.getElementById('socratic-messages').innerHTML='<div class="loading"><div class="spinner"></div>老师正在思考...</div>';
+  try{
+    const result=await callAI(PROMPTS.socraticStart(item,a?a.analysis:null));
+    // Store dialog
+    const dialogs=load(SK.dialogs)||[];
+    const dialogId=uid();
+    dialogs.push({id:dialogId,itemId,history:[],createdAt:Date.now()});
+    store(SK.dialogs,dialogs);
+    window._currentDialog={id:dialogId,itemId};
+    renderSocraticMsg('ai','🧠 老师',result);
+  }catch(e){
+    document.getElementById('socratic-messages').innerHTML=`<div class="chat-msg ai"><div class="chat-avatar">🧠</div><div class="chat-bubble">抱歉，启动引导失败，请检查API设置。</div></div>`;
+  }
+}
+
+function renderSocraticMsg(type,name,text){
+  const container=document.getElementById('socratic-messages');
+  const loading=container.querySelector('.loading');
+  if(loading)loading.remove();
+  const msg=document.createElement('div');
+  msg.className='chat-msg '+type;
+  msg.innerHTML=`<div class="chat-avatar">${type==='ai'?'🧠':'👦'}</div><div class="chat-bubble">${text}</div>`;
+  container.appendChild(msg);
+  container.scrollTop=container.scrollHeight;
+}
+
+async function sendSocraticMsg(){
+  const input=document.getElementById('socratic-input');
+  const text=input.value.trim();
+  if(!text)return;
+  input.value='';
+  renderSocraticMsg('user','学生',text);
+  // Build history for AI
+  if(!window._currentDialog)return;
+  const dialogId=window._currentDialog.id;
+  const dialogs=load(SK.dialogs)||[];
+  const d=dialogs.find(d=>d.id===dialogId);
+  if(!d)return;
+  d.history.push({role:'user',content:text});
+  // Show loading
+  const container=document.getElementById('socratic-messages');
+  const loadDiv=document.createElement('div');
+  loadDiv.className='loading';loadDiv.innerHTML='<div class="spinner"></div>老师思考中...';
+  container.appendChild(loadDiv);
+  try{
+    const result=await callAI(PROMPTS.socraticContinue(d.history));
+    d.history.push({role:'assistant',content:result});
+    store(SK.dialogs,dialogs);
+    renderSocraticMsg('ai','老师',result);
+  }catch(e){
+    renderSocraticMsg('ai','老师','抱歉，引导暂时中断。请稍后再试。');
+  }
+}
+
+// ============================================================
+//  PRACTICE (举一反三)
+// ============================================================
+function refreshPracticeSelect(){
+  const mastery=load(SK.mastery)||{};
+  const sel=document.getElementById('practice-kp-select');
+  sel.innerHTML='<option value="">-- 请选择知识点 --</option>';
+  Object.keys(mastery).forEach(kid=>{
+    const k=KNOWLEDGE_TREE.find(k=>k.id===kid);
+    if(k){
+      const m=mastery[kid];
+      sel.innerHTML+=`<option value="${kid}">${k.name} (${m.level<=1?'⚡卡点':m.level<=2?'⚠薄弱':m.level<=3?'🔄练习中':'✅接近掌握'})</option>`;
+    }
+  });
+  // Also add all knowledge points for current grade
+  const gradeTheme=(load(SK.settings)||{}).gradeTheme||'7-9';
+  const gradeRange=gradeTheme==='3-6'?[3,4,5,6]:gradeTheme==='7-9'?[7,8,9]:[10,11,12];
+  KNOWLEDGE_TREE.filter(k=>gradeRange.includes(parseInt(k.grade))&&!mastery[k.id]).forEach(k=>{
+    sel.innerHTML+=`<option value="${k.id}">${k.name}</option>`;
+  });
+}
+
+async function generatePractice(){
+  const sel=document.getElementById('practice-kp-select');
+  const kid=sel.value;
+  if(!kid){toast('请先选择知识点','error');return}
+  await generatePracticeForKP(kid);
+}
+
+async function generatePracticeFor(itemId){
+  const analyses=load(SK.analysis)||[];
+  const a=analyses.find(a=>a.itemId===itemId);
+  if(!a||!a.analysis.knowledgePoints?.length){toast('请先分析该错题','error');return}
+  const kid=a.analysis.knowledgePoints[0].id||a.analysis.knowledgePoints[0].knowledgeId;
+  const questions=load(SK.questions)||[];
+  const item=questions.find(q=>q.id===itemId);
+  await generatePracticeForKP(kid,item?.grade||'7');
+}
+
+async function generatePracticeForKP(kid,grade){
+  const k=KNOWLEDGE_TREE.find(k=>k.id===kid);
+  if(!k)grade=grade||k?.grade||'7';
+  toast('正在生成练习题...','warning');
+  showPage('practice');
+  document.getElementById('practice-kp-select').value=kid;
+  document.getElementById('practice-content').innerHTML='<div class="loading"><div class="spinner"></div>AI正在出题...</div>';
+  try{
+    const result=await callAI(PROMPTS.generatePractice(kid,grade||k?.grade||'7'));
+    let practice;
+    try{const jsonMatch=result.match(/\{[\s\S]*\}/);practice=JSON.parse(jsonMatch[0])}catch(e){practice={rawText:result,questions:[]}}
+    // Store practice
+    const allPractice=load(SK.practice)||[];
+    const practiceId=uid();
+    allPractice.push({id:practiceId,knowledgeId:kid,questions:practice.questions||[],answers:[],createdAt:Date.now()});
+    store(SK.practice,allPractice);
+    window._currentPractice={id:practiceId,index:0};
+    renderPractice(practice.questions||[]);
+  }catch(e){
+    document.getElementById('practice-content').innerHTML='<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">生成失败，请重试</div></div>';
+  }
+}
+
+function renderPractice(questions){
+  if(!questions.length){
+    document.getElementById('practice-content').innerHTML='<div class="empty-state"><div class="empty-icon">💪</div><div class="empty-text">未能生成题目，请重试</div></div>';
+    return;
+  }
+  let html='';
+  questions.forEach((q,i)=>{
+    const diff=q.difficulty||1;
+    html+=`<div class="practice-card difficulty-${diff} fade-in">
+      <span class="difficulty-label d${diff}">${diff===1?'同难度巩固':diff===2?'稍有提升':diff===3?'变式拓展'} · ${diff===1?'⭐':diff===2?'⭐⭐':'⭐⭐⭐'}</span>
+      <div class="practice-question">${q.content}</div>
+      ${q.options?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">${q.options.map((opt,j)=>`<button class="btn btn-outline btn-sm" id="popt-${i}-${j}" onclick="selectPracticeOption(${i},${j})">${['A','B','C','D'][j]}. ${opt}</button>`).join('')}</div>`:
+      `<div class="form-group"><input class="form-input" id="panswer-${i}" placeholder="输入你的答案"></div>`}
+      <button class="btn btn-accent btn-sm" onclick="submitPracticeAnswer(${i})">提交答案</button>
+      <div id="presult-${i}"></div>
+    </div>`;
+  });
+  document.getElementById('practice-content').innerHTML=html;
+}
+
+window._selectedOptions={};
+
+function selectPracticeOption(qIndex,optIndex){
+  window._selectedOptions[qIndex]=optIndex;
+  // Highlight selected
+  for(let j=0;j<4;j++){
+    const btn=document.getElementById(`popt-${qIndex}-${j}`);
+    if(btn){
+      btn.className=j===optIndex?'btn btn-accent btn-sm':'btn btn-outline btn-sm';
+    }
+  }
+}
+
+async function submitPracticeAnswer(qIndex){
+  const practice=load(SK.practice)||[];
+  const p=practice.find(p=>p.id===window._currentPractice?.id);
+  if(!p)return;
+  const q=p.questions[qIndex];
+  let studentAnswer;
+  if(q.options){
+    const optIdx=window._selectedOptions[qIndex];
+    if(optIdx===undefined){toast('请选择答案','error');return}
+    studentAnswer=q.options[optIdx];
+  }else{
+    studentAnswer=document.getElementById(`panswer-${qIndex}`).value.trim();
+    if(!studentAnswer){toast('请输入答案','error');return}
+  }
+  const resultDiv=document.getElementById(`presult-${qIndex}`);
+  resultDiv.innerHTML='<div class="loading"><div class="spinner"></div>判题中...</div>';
+  try{
+    const result=await callAI(PROMPTS.judgePractice(q.content,studentAnswer));
+    let judge;
+    try{const jsonMatch=result.match(/\{[\s\S]*\}/);judge=JSON.parse(jsonMatch[0])}catch(e){judge={correct:false,feedback:result,solution:''}}
+    // Store answer
+    p.answers[qIndex]={studentAnswer,correct:judge.correct,score:judge.score||0};
+    store(SK.practice,practice);
+    // Update mastery
+    const mastery=load(SK.mastery)||{};
+    const kid=p.knowledgeId;
+    if(mastery[kid]){
+      mastery[kid].practiceCount++;
+      if(judge.correct)mastery[kid].correctCount++;
+      mastery[kid].level=calcMasteryLevel(mastery[kid]);
+      store(SK.mastery,mastery);
+    }
+    // Show result
+    resultDiv.innerHTML=`<div class="practice-result ${judge.correct?'correct':'wrong'}">
+      ${judge.correct?'✅ 正确！':'❌ 答案有误'} ${judge.feedback||''}
+      ${!judge.correct&&judge.solution?`<div style="margin-top:8px;font-size:12px;color:var(--text-light)">正确解法: ${judge.solution}</div>`:''}
+    </div>`;
+  }catch(e){
+    resultDiv.innerHTML=`<div class="practice-result wrong">判题失败，请重试</div>`;
+  }
+}
+
+// ============================================================
+//  ERROR BOOK (错题本)
+// ============================================================
+function renderErrorBook(){
+  const questions=load(SK.questions)||[];
+  const analyses=load(SK.analysis)||[];
+  const mastery=load(SK.mastery)||{};
+  const filterStatus=document.getElementById('filter-status').value;
+  const filterGrade=document.getElementById('filter-grade').value;
+  let filtered=questions.filter(q=>{
+    if(filterStatus!=='all'&&q.status!==filterStatus)return false;
+    if(filterGrade!=='all'&&q.grade!==filterGrade)return false;
+    return true;
+  });
+  const container=document.getElementById('errorbook-list');
+  if(!filtered.length){
+    container.innerHTML='<div class="empty-state"><div class="empty-icon">📖</div><div class="empty-text">暂无错题记录</div><button class="btn btn-primary" onclick="showPage(\'upload\')">📝 录入错题</button></div>';
+    return;
+  }
+  let html='';
+  filtered.forEach(q=>{
+    const a=analyses.find(a=>a.itemId===q.id);
+    const kp=a?.analysis?.knowledgePoints||[];
+    const statusLabel={unresolved:'未解决',practicing:'练习中',mastered:'已掌握'}[q.status]||q.status;
+    html+=`<div class="error-item fade-in" onclick="showErrorDetail('${q.id}')">
+      <div class="error-thumb">${q.type==='image'?'📷':'📝'}</div>
+      <div class="error-info">
+        <div class="error-title">${q.type==='image'?'图片错题':q.question.slice(0,40)}...</div>
+        <div class="error-meta">
+          <span class="tag primary">${q.grade}年级</span>
+          ${kp.map(k=>`<span class="tag accent">${k.name||k.id}</span>`).join('')}
+          <span>${formatDate(q.createdAt)}</span>
+        </div>
+      </div>
+      <span class="error-status ${q.status}">${statusLabel}</span>
+    </div>`;
+  });
+  container.innerHTML=html;
+}
+
+function showErrorDetail(itemId){
+  const questions=load(SK.questions)||[];
+  const analyses=load(SK.analysis)||[];
+  const q=questions.find(q=>q.id===itemId);
+  const a=analyses.find(a=>a.itemId===itemId);
+  if(!q)return;
+  const an=a?.analysis||{};
+  showModal(`<h3 style="margin-bottom:12px">错题详情</h3>
+    ${q.type==='image'?`<img src="${q.imageData}" style="max-width:100%;border-radius:8px;margin-bottom:12px">`:``}
+    <div style="padding:12px;background:rgba(108,92,231,0.03);border-radius:8px;margin-bottom:12px;font-size:14px;line-height:1.8">${q.question||an.question||'题目内容'}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div><span class="form-label">❌ 错误答案</span><div style="font-size:13px;margin-top:4px">${q.wrongAnswer||an.wrongAnswer||'未知'}</div></div>
+      <div><span class="form-label">✅ 正确答案</span><div style="font-size:13px;margin-top:4px">${q.correctAnswer||an.correctAnswer||'未知'}</div></div>
+    </div>
+    ${an.errorAnalysis?`<div style="margin-bottom:12px"><span class="form-label">📊 分析</span><div style="font-size:13px;margin-top:4px">${an.errorAnalysis}</div></div>`:''}
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-accent btn-sm" onclick="closeModal();diagnoseBlockpoint('${itemId}')">⚡卡点</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal();startSocraticFor('${itemId}')">🧠引导</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal();generatePracticeFor('${itemId}')">💪练习</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <select class="form-select" id="detail-status" style="width:120px" onchange="updateErrorStatus('${itemId}',this.value)">
+        <option value="unresolved" ${q.status==='unresolved'?'selected':''}>未解决</option>
+        <option value="practicing" ${q.status==='practicing'?'selected':''}>练习中</option>
+        <option value="mastered" ${q.status==='mastered'?'selected':''}>已掌握</option>
+      </select>
+      <button class="btn btn-danger btn-sm" onclick="deleteError('${itemId}')">🗑️删除</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">关闭</button>
+    </div>`);
+}
+
+function updateErrorStatus(itemId,status){
+  const questions=load(SK.questions)||[];
+  const q=questions.find(q=>q.id===itemId);
+  if(q){q.status=status;store(SK.questions,questions);toast('状态已更新')}
+}
+
+function deleteError(itemId){
+  const questions=load(SK.questions)||[];
+  const idx=questions.findIndex(q=>q.id===itemId);
+  if(idx>=0){questions.splice(idx,1);store(SK.questions,questions)}
+  const analyses=load(SK.analysis)||[];
+  const aIdx=analyses.findIndex(a=>a.itemId===itemId);
+  if(aIdx>=0){analyses.splice(aIdx,1);store(SK.analysis,analyses)}
+  closeModal();toast('错题已删除');renderErrorBook();
+}
+
+// ============================================================
+//  WEEKLY CONSOLIDATION
+// ============================================================
+function refreshWeekly(){
+  const questions=load(SK.questions)||[];
+  const mastery=load(SK.mastery)||{};
+  const now=Date.now();
+  const weekAgo=now-7*86400000;
+  const weeklyErrors=questions.filter(q=>q.createdAt>=weekAgo);
+  const masteredThisWeek=questions.filter(q=>q.createdAt>=weekAgo&&q.status==='mastered');
+  const weakKP=Object.entries(mastery).filter(([k,m])=>m.level<=2);
+  // Stats
+  document.getElementById('ws-new').textContent=weeklyErrors.length;
+  document.getElementById('ws-mastered').textContent=masteredThisWeek.length;
+  document.getElementById('ws-weak').textContent=weakKP.length;
+  const totalPractice=Object.values(mastery).reduce((s,m)=>s+m.practiceCount,0);
+  const totalCorrect=Object.values(mastery).reduce((s,m)=>s+m.correctCount,0);
+  document.getElementById('ws-rate').textContent=totalPractice?Math.round(totalCorrect/totalPractice*100)+'%':'0%';
+  // Draw weekly chart
+  drawWeeklyChart(questions,mastery);
+}
+
+function drawWeeklyChart(questions,mastery){
+  const canvas=document.getElementById('chart-weekly');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  canvas.width=canvas.parentElement.clientWidth-32;
+  canvas.height=180;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Group errors by day (last 7 days)
+  const now=Date.now();
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const dayStart=now-(i+1)*86400000;
+    const dayEnd=now-i*86400000;
+    const count=questions.filter(q=>q.createdAt>=dayStart&&q.createdAt<dayEnd).length;
+    days.push({label:['7天前','6天前','5天前','4天前','3天前','2天前','昨天'][i],count});
+  }
+  const max=Math.max(...days.map(d=>d.count),1);
+  const barW=canvas.width/7-8;
+  const barH=canvas.height-40;
+  ctx.fillStyle='#e0e0e0';ctx.fillRect(0,0,canvas.width,canvas.height);
+  days.forEach((d,i)=>{
+    const x=i*(canvas.width/7)+4;
+    const h=d.count/max*barH;
+    ctx.fillStyle='var(--primary)';ctx.fillStyle='#6C5CE7';
+    ctx.fillRect(x,barH-h+20,barW,h);
+    ctx.fillStyle='#666';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(d.label,x+barW/2,canvas.height-4);
+    ctx.fillText(d.count,x+barW/2,barH-h+14);
+  });
+}
+
+async function generateWeekly(){
+  const questions=load(SK.questions)||[];
+  const mastery=load(SK.mastery)||{};
+  const analyses=load(SK.analysis)||[];
+  const now=Date.now();
+  const weekAgo=now-7*86400000;
+  const weeklyErrors=questions.filter(q=>q.createdAt>=weekAgo);
+  if(!weeklyErrors.length){toast('本周没有错题记录','warning');return}
+  toast('正在生成巩固卷...','warning');
+  const weeklyData={
+    errors:weeklyErrors.map(q=>({question:q.question?.slice(0,50),grade:q.grade,status:q.status})),
+    knowledgePoints:Object.entries(mastery).filter(([k,m])=>m.level<=3).map(([k,m])=>({id:k,name:KNOWLEDGE_TREE.find(t=>t.id===k)?.name||k,level:m.level,errorCount:m.errorCount})),
+    masterySummary:Object.entries(mastery).reduce((acc,[k,m])=>{acc[k]=m.level;return acc},{})
+  };
+  try{
+    const result=await callAI(PROMPTS.weeklySummary(weeklyData));
+    let summary;
+    try{const jsonMatch=result.match(/\{[\s\S]*\}/);summary=JSON.parse(jsonMatch[0])}catch(e){summary={rawText:result,summary:result,exercises:[]}}
+    // Store weekly
+    const allWeekly=load(SK.weekly)||[];
+    allWeekly.push({data:weeklyData,summary,createdAt:Date.now()});
+    store(SK.weekly,allWeekly);
+    renderWeeklyResult(summary);
+  }catch(e){
+    document.getElementById('weekly-content').innerHTML='<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">生成失败</div></div>';
+  }
+}
+
+function renderWeeklyResult(summary){
+  let html=`<div class="card fade-in" style="margin-bottom:16px">
+    <div class="card-title">📋 本周学习总结</div>
+    <div style="font-size:14px;line-height:1.8;margin-bottom:12px">${summary.summary||summary.rawText||'暂无总结'}</div>
+    ${summary.focusPoints?.length?`<div style="margin-bottom:12px"><span class="form-label">🎯 重点巩固</span><div style="display:flex;gap:6px;margin-top:6px">${summary.focusPoints.map(p=>`<span class="tag danger">${p}</span>`).join('')}</div></div>`:''}
+  </div>`;
+  if(summary.exercises?.length){
+    html+=`<div class="card fade-in"><div class="card-title">📚 推荐练习</div>`;
+    summary.exercises.forEach(ex=>{
+      html+=`<div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">
+        <div style="font-weight:600;margin-bottom:4px">${ex.title}</div>
+        <div style="font-size:12px;color:var(--text-light)">${ex.description||''}</div>
+        <div style="display:flex;gap:4px;margin-top:6px">
+          <span class="tag primary">${ex.difficulty||'综合'}</span>
+          <span class="tag accent">${ex.questionCount||5}题</span>
+        </div>
+      </div>`;
+    });
+    html+=`<button class="btn btn-primary btn-block" onclick="generateWeeklyPracticePDF()" style="margin-top:12px">📄 生成PDF练习卷</button></div>`;
+  }
+  if(summary.advice){
+    html+=`<div class="card fade-in" style="margin-top:16px"><div class="card-title">💡 学习建议</div><div style="font-size:14px;line-height:1.8">${summary.advice}</div></div>`;
+  }
+  document.getElementById('weekly-content').innerHTML=html;
+}
+
+async function generateWeeklyPracticePDF(){
+  toast('正在生成PDF...','warning');
+  const weekly=load(SK.weekly)||[];
+  const latest=weekly[weekly.length-1];
+  if(!latest?.summary?.exercises?.length){toast('没有练习数据','error');return}
+  // Generate practice questions via AI
+  const knowledgeIds=latest.summary.exercises.flatMap(ex=>ex.knowledgeIds||[]);
+  try{
+    const grade=latest.data?.errors?.[0]?.grade||'7';
+    const result=await callAI(PROMPTS.generatePractice(knowledgeIds[0]||'algebra-equation-linear',grade));
+    let practice;
+    try{const jsonMatch=result.match(/\{[\s\S]*\}/);practice=JSON.parse(jsonMatch[0])}catch(e){practice={questions:[]}}
+    // Generate PDF using jsPDF (loaded dynamically)
+    if(!window.jspdf){
+      await new Promise((resolve,reject)=>{
+        const script=document.createElement('script');
+        script.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        script.onload=resolve;script.onerror=reject;
+        document.head.appendChild(script);
+      });
+    }
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF();
+    doc.setFont('helvetica');
+    doc.setFontSize(20);
+    doc.text('Weekly Practice Sheet',20,20);
+    doc.setFontSize(12);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`,20,30);
+    let y=45;
+    practice.questions.forEach((q,i)=>{
+      doc.setFontSize(14);
+      doc.text(`${i+1}. ${q.content}`,20,y);
+      y+=10;
+      if(q.options){
+        q.options.forEach((opt,j)=>{
+          doc.setFontSize(12);
+          doc.text(`  ${['A','B','C','D'][j]}. ${opt}`,25,y);
+          y+=7;
+        });
+      }
+      doc.text('Answer: _______________',25,y);
+      y+=15;
+      if(y>270){doc.addPage();y=20}
+    });
+    doc.save('weekly-practice.pdf');
+    toast('PDF已生成！','success');
+  }catch(e){
+    toast('PDF生成失败','error');
+  }
+}
+
+// ============================================================
+//  DASHBOARD
+// ============================================================
+function refreshDashboard(){
+  const questions=load(SK.questions)||[];
+  const mastery=load(SK.mastery)||{};
+  const practice=load(SK.practice)||[];
+  // Stats
+  document.getElementById('stat-total').textContent=questions.length;
+  const blockedKP=Object.values(mastery).filter(m=>m.level<=1).length;
+  document.getElementById('stat-blocks').textContent=blockedKP;
+  const masteredKP=Object.values(mastery).filter(m=>m.level>=5).length;
+  document.getElementById('stat-mastered').textContent=masteredKP;
+  const totalPracticeDone=practice.reduce((s,p)=>s+(p.answers?.length||0),0);
+  document.getElementById('stat-practice').textContent=totalPracticeDone;
+  // Update badge
+  document.getElementById('upload-count').textContent=questions.length;
+  // Heatmap
+  renderHeatmap(mastery);
+  // Progress chart
+  drawProgressChart(questions,mastery);
+  // Recent errors
+  renderRecentErrors(questions);
+}
+
+function renderHeatmap(mastery){
+  const container=document.getElementById('heatmap-grid');
+  const gradeTheme=(load(SK.settings)||{}).gradeTheme||'7-9';
+  const gradeRange=gradeTheme==='3-6'?[3,4,5,6]:gradeTheme==='7-9'?[7,8,9]:[10,11,12];
+  const filtered=KNOWLEDGE_TREE.filter(k=>gradeRange.includes(parseInt(k.grade)));
+  let html='';
+  filtered.forEach(k=>{
+    const m=mastery[k.id];
+    const level=m?.level||0;
+    html+=`<div class="heatmap-cell level-${level}" onclick="showBlockpointDetail('${k.id}')">${k.name.slice(0,4)}</div>`;
+  });
+  container.innerHTML=html;
+}
+
+function drawProgressChart(questions,mastery){
+  const canvas=document.getElementById('chart-progress');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  canvas.width=canvas.parentElement.clientWidth-32;
+  canvas.height=200;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Plot mastery levels over knowledge points
+  const gradeTheme=(load(SK.settings)||{}).gradeTheme||'7-9';
+  const gradeRange=gradeTheme==='3-6'?[3,4,5,6]:gradeTheme==='7-9'?[7,8,9]:[10,11,12];
+  const filtered=KNOWLEDGE_TREE.filter(k=>gradeRange.includes(parseInt(k.grade)));
+  const masteryData=filtered.map(k=>({name:k.name.slice(0,6),level:mastery[k.id]?.level||0}));
+  const barW=canvas.width/masteryData.length-4;
+  const barH=canvas.height-40;
+  // Background
+  ctx.fillStyle='#f8f9fa';ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Grid lines
+  for(let i=0;i<=5;i++){
+    const y=barH+20-i*(barH/5);
+    ctx.strokeStyle='#dfe6e9';ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();
+    ctx.fillStyle='#b2bec3';ctx.font='10px sans-serif';ctx.fillText(i*20+'%',2,y-2);
+  }
+  masteryData.forEach((d,i)=>{
+    const x=i*(canvas.width/masteryData.length)+2;
+    const h=d.level*(barH/5);
+    const color=d.level<=1?'#e74c3c':d.level<=2?'#f39c12':d.level<=3?'#00cec9':d.level>=5?'#2ecc71':'#6C5CE7';
+    ctx.fillStyle=color;
+    ctx.fillRect(x,barH-h+20,barW,h);
+    ctx.fillStyle='#636e72';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText(d.name,x+barW/2,canvas.height-4);
+  });
+}
+
+function renderRecentErrors(questions){
+  const container=document.getElementById('recent-errors');
+  const recent=questions.slice(0,5);
+  if(!recent.length){
+    container.innerHTML='<div class="empty-state"><div class="empty-text">暂无错题</div></div>';
+    return;
+  }
+  let html='';
+  recent.forEach(q=>{
+    html+=`<div class="error-item" onclick="showErrorDetail('${q.id}')">
+      <div class="error-thumb">${q.type==='image'?'📷':'📝'}</div>
+      <div class="error-info">
+        <div class="error-title">${q.type==='image'?'图片错题':q.question.slice(0,40)}...</div>
+        <div class="error-meta"><span>${q.grade}年级</span><span>${formatDate(q.createdAt)}</span></div>
+      </div>
+      <span class="error-status ${q.status}">${{unresolved:'未解决',practicing:'练习中',mastered:'已掌握'}[q.status]||'未知'}</span>
+    </div>`;
+  });
+  container.innerHTML=html;
+}
+
+// ============================================================
+//  SETTINGS
+// ============================================================
+function saveSettings(){
+  const s={
+    apiUrl:document.getElementById('setting-api-url').value.trim(),
+    apiKey:document.getElementById('setting-api-key').value.trim(),
+    model:document.getElementById('setting-model').value.trim(),
+    gradeTheme:document.getElementById('setting-grade-theme').value,
+    darkMode:document.getElementById('toggle-dark').classList.contains('active')
+  };
+  storeGlobal(SK.settings,s);
+  applyTheme(s);
+  toast('设置已保存！','success');
+}
+
+function applyTheme(s){
+  document.body.dataset.theme=s.darkMode?'dark':'light';
+  document.body.dataset.grade=s.gradeTheme||'7-9';
+  const gradeLabels={'3-6':'📐 小学数学','7-9':'📐 初中数学','10-12':'📐 高中数学'};
+  document.getElementById('grade-badge').textContent=gradeLabels[s.gradeTheme||'7-9'];
+}
+
+function toggleDarkMode(){
+  const toggle=document.getElementById('toggle-dark');
+  toggle.classList.toggle('active');
+  document.body.dataset.theme=toggle.classList.contains('active')?'dark':'light';
+}
+
+function changeGradeTheme(val){
+  document.body.dataset.grade=val;
+  const gradeLabels={'3-6':'📐 小学数学','7-9':'📐 初中数学','10-12':'📐 高中数学'};
+  document.getElementById('grade-badge').textContent=gradeLabels[val];
+  // Auto-save (global setting)
+  const s=loadGlobal(SK.settings)||{};
+  s.gradeTheme=val;
+  storeGlobal(SK.settings,s);
+  refreshDashboard();
+}
+
+function exportData(){
+  const currentUser = getCurrentUser();
+  const data = { _user: currentUser, _exportTime: Date.now() };
+  Object.values(SK).forEach(k => {
+    if (k === SK.users || k === SK.currentUser) return; // skip global user registry
+    if (k === SK.settings) { data[k] = loadGlobal(k); } // global settings
+    else { data[k] = load(k); } // user-scoped data
+  });
+  data[SK.blockpoints] = load(SK.blockpoints); // also export blockpoints
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `errorbook-${currentUser?.name || 'data'}-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('数据已导出', 'success');
+}
+
+function importData(){
+  document.getElementById('import-file').click();
+}
+
+function handleImport(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const data=JSON.parse(ev.target.result);
+      Object.entries(data).forEach(([k,v])=>{
+        if(k.startsWith('_'))return; // skip meta fields
+        if(k===SK.settings){localStorage.setItem(k,JSON.stringify(v))} // global settings
+        else{localStorage.setItem(userKey(k),JSON.stringify(v))} // user-scoped
+      });
+      toast('数据已导入到当前用户','success');
+      refreshDashboard();
+    }catch(err){toast('导入失败：文件格式错误','error')}
+  };
+  reader.readAsText(file);
+}
+
+function clearAllData(){
+  const user = getCurrentUser();
+  showModal(`<h3 style="margin-bottom:16px">⚠️ 确认清空"${user?.name || '当前用户'}"的数据？</h3>
+    <p style="color:var(--danger);margin-bottom:16px">此操作不可恢复！该用户的所有错题、分析、练习记录将被删除。<br>其他用户的数据不受影响。</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-danger" onclick="doClearAll()">确认清空</button>
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+    </div>`);
+}
+
+function doClearAll(){
+  const keysToClear = [SK.questions, SK.analysis, SK.dialogs, SK.practice, SK.mastery, SK.weekly, SK.blockpoints];
+  keysToClear.forEach(k => localStorage.removeItem(userKey(k)));
+  closeModal();toast('当前用户数据已清空','success');
+  refreshDashboard();
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+(function init(){
+  // Load saved global settings
+  const s=loadGlobal(SK.settings);
+  if(s){
+    applyTheme(s);
+    document.getElementById('setting-api-url').value=s.apiUrl||'https://api.deepseek.com/v1';
+    document.getElementById('setting-api-key').value=s.apiKey||'';
+    document.getElementById('setting-model').value=s.model||'deepseek-chat';
+    document.getElementById('setting-grade-theme').value=s.gradeTheme||'7-9';
+    if(s.darkMode)document.getElementById('toggle-dark').classList.add('active');
+  }
+  // Check current user
+  const savedUserId = loadGlobal(SK.currentUser);
+  if (savedUserId) {
+    const users = loadGlobal(SK.users) || [];
+    const user = users.find(u => u.id === savedUserId);
+    if (user) {
+      loginAs(user.id); // will hide login screen and load data
+      setTimeout(()=>{refreshDashboard();refreshWeekly()},300);
+      return;
+    }
+  }
+  // No valid user -> show login screen
+  renderUserList();
+  document.getElementById('login-screen').style.display = 'flex';
+})();
+</script>
+</body>
+</html>
