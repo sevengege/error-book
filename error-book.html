@@ -1405,23 +1405,56 @@ async function generatePracticeForKP(kid,grade){
 }
 
 function renderPractice(questions){
+  const container=document.getElementById('practice-content');
+  container.innerHTML='';
   if(!questions.length){
-    document.getElementById('practice-content').innerHTML='<div class="empty-state"><div class="empty-icon">💪</div><div class="empty-text">未能生成题目，请重试</div></div>';
+    container.innerHTML='<div class="empty-state"><div class="empty-icon">💪</div><div class="empty-text">未能生成题目，请重试</div></div>';
     return;
   }
-  let html='';
   questions.forEach((q,i)=>{
     const diff=q.difficulty||1;
-    html+=`<div class="practice-card difficulty-${diff} fade-in">
-      <span class="difficulty-label d${diff}">${diff===1?'同难度巩固':diff===2?'稍有提升':diff===3?'变式拓展'} · ${diff===1?'⭐':diff===2?'⭐⭐':'⭐⭐⭐'}</span>
-      <div class="practice-question">${q.content}</div>
-      ${q.options?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">${q.options.map((opt,j)=>`<button class="btn btn-outline btn-sm" id="popt-${i}-${j}" onclick="selectPracticeOption(${i},${j})">${['A','B','C','D'][j]}. ${opt}</button>`).join('')}</div>`:
-      `<div class="form-group"><input class="form-input" id="panswer-${i}" placeholder="输入你的答案"></div>`}
-      <button class="btn btn-accent btn-sm" onclick="submitPracticeAnswer(${i})">提交答案</button>
-      <div id="presult-${i}"></div>
-    </div>`;
+    const card=document.createElement('div');
+    card.className='practice-card difficulty-'+diff+' fade-in';
+    const diffLabel=document.createElement('span');
+    diffLabel.className='difficulty-label d'+diff;
+    const diffNames=['','同难度巩固','稍有提升','变式拓展'];
+    const diffEmojis=['','⭐','⭐⭐','⭐⭐⭐'];
+    diffLabel.textContent=diffNames[diff]+' · '+diffEmojis[diff];
+    card.appendChild(diffLabel);
+    const qDiv=document.createElement('div');
+    qDiv.className='practice-question';
+    qDiv.textContent=q.content;
+    card.appendChild(qDiv);
+    if(q.options){
+      const optDiv=document.createElement('div');
+      optDiv.style='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px';
+      q.options.forEach((opt,j)=>{
+        const btn=document.createElement('button');
+        btn.className='btn btn-outline btn-sm';
+        btn.id='popt-'+i+'-'+j;
+        btn.textContent=['A','B','C','D'][j]+'. '+opt;
+        btn.onclick=()=>selectPracticeOption(i,j);
+        optDiv.appendChild(btn);
+      });
+      card.appendChild(optDiv);
+    }else{
+      const inp=document.createElement('input');
+      inp.className='form-input';
+      inp.id='panswer-'+i;
+      inp.placeholder='输入你的答案';
+      const fg=document.createElement('div');
+      fg.className='form-group';fg.appendChild(inp);card.appendChild(fg);
+    }
+    const subBtn=document.createElement('button');
+    subBtn.className='btn btn-accent btn-sm';
+    subBtn.textContent='提交答案';
+    subBtn.onclick=()=>submitPracticeAnswer(i);
+    card.appendChild(subBtn);
+    const resDiv=document.createElement('div');
+    resDiv.id='presult-'+i;
+    card.appendChild(resDiv);
+    container.appendChild(card);
   });
-  document.getElementById('practice-content').innerHTML=html;
 }
 
 window._selectedOptions={};
