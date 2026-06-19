@@ -510,6 +510,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
       <div class="tabs">
         <button class="tab-btn active" onclick="switchUploadTab('text')">📝 文本录入</button>
         <button class="tab-btn" onclick="switchUploadTab('image')">📷 图片上传</button>
+        <button class="tab-btn" onclick="switchUploadTab('grade')">✍️ 试卷阅判</button>
       </div>
       <div id="upload-text-tab">
         <div class="form-group">
@@ -563,6 +564,40 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
           </select>
         </div>
         <button class="btn btn-primary btn-lg btn-block" onclick="submitImageError()">🚀 AI识别并分析</button>
+      </div>
+      <div id="upload-grade-tab" style="display:none">
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-size:48px;margin-bottom:8px">✍️</div>
+          <div style="font-size:15px;font-weight:600;color:var(--primary)">试卷阅判</div>
+          <div style="font-size:13px;color:var(--text-light)">上传试卷/作业照片，AI逐题批改并自动收录错题</div>
+        </div>
+        <div class="upload-area" id="grade-upload-area" onclick="document.getElementById('grade-file-input').click()">
+          <div class="upload-icon">📄</div>
+          <div class="upload-text">点击或拖拽上传试卷照片<br><small>支持 JPG/PNG，最大 10MB<br>建议拍摄清晰、光线充足的图片</small></div>
+          <img class="upload-preview" id="grade-upload-preview" alt="预览" style="max-width:300px;max-height:300px">
+        </div>
+        <input type="file" id="grade-file-input" accept="image/*" style="display:none" onchange="handleGradeImageUpload(event)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+          <div class="form-group">
+            <label class="form-label">年级</label>
+            <select class="form-select" id="grade-exam-grade">
+              <option value="3">三年级</option><option value="4">四年级</option><option value="5">五年级</option><option value="6">六年级</option>
+              <option value="7" selected>七年级</option><option value="8">八年级</option><option value="9">九年级</option>
+              <option value="10">高一</option><option value="11">高二</option><option value="12">高三</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">学科</label>
+            <select class="form-select" id="grade-exam-subject">
+              <option value="数学">数学</option><option value="英语">英语</option><option value="物理">物理</option><option value="化学">化学</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" id="grade-submit-btn" onclick="submitGradeExam()">✍️ 开始阅判</button>
+        <div id="grade-loading" style="display:none;text-align:center;padding:24px">
+          <div class="loading"><div class="spinner"></div><div>AI正在逐题批改，请稍候...</div></div>
+        </div>
+        <div id="grade-result" style="display:none;margin-top:16px"></div>
       </div>
     </div>
   </div>
@@ -999,6 +1034,7 @@ function switchUploadTab(tab){
   event.target.classList.add('active');
   document.getElementById('upload-text-tab').style.display=tab==='text'?'block':'none';
   document.getElementById('upload-image-tab').style.display=tab==='image'?'block':'none';
+  document.getElementById('upload-grade-tab').style.display=tab==='grade'?'block':'none';
 }
 
 function handleImageUpload(e){
@@ -1062,18 +1098,267 @@ function submitImageError(){
 }
 
 // ============================================================
+//  试卷阅判 (GRADE EXAM)
+// ============================================================
+function handleGradeImageUpload(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  if(file.size>10*1024*1024){toast('图片不能超过10MB','error');return}
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const preview=document.getElementById('grade-upload-preview');
+    preview.src=ev.target.result;preview.style.display='block';
+    document.getElementById('grade-upload-area').classList.add('dragging');
+  };
+  reader.readAsDataURL(file);
+}
+
+// Drag & drop for grade area
+const gradeArea=document.getElementById('grade-upload-area');
+if(gradeArea){
+  gradeArea.addEventListener('dragover',e=>{e.preventDefault();gradeArea.classList.add('dragging')});
+  gradeArea.addEventListener('dragleave',()=>gradeArea.classList.remove('dragging'));
+  gradeArea.addEventListener('drop',e=>{
+    e.preventDefault();gradeArea.classList.remove('dragging');
+    const file=e.dataTransfer.files[0];
+    if(file&&file.type.startsWith('image/')){
+      document.getElementById('grade-file-input').files=e.dataTransfer.files;
+      handleGradeImageUpload({target:{files:[file]}});
+    }
+  });
+}
+
+async function submitGradeExam(){
+  const preview=document.getElementById('grade-upload-preview');
+  if(!preview.src||preview.style.display==='none'){toast('请先上传试卷图片','error');return}
+  const grade=document.getElementById('grade-exam-grade').value;
+  const subject=document.getElementById('grade-exam-subject').value;
+  const s=getSettings();
+  if(!s.apiKey){showModal('<h3 style="margin-bottom:16px">🔑 需要配置API Key</h3><p style="color:var(--text-light);margin-bottom:16px">试卷阅判需要AI能力，请先配置API Key。</p><button class="btn btn-primary btn-block" onclick="closeModal();showPage(\'settings\')">前往设置</button>');return}
+
+  // Show loading
+  document.getElementById('grade-submit-btn').disabled=true;
+  document.getElementById('grade-loading').style.display='block';
+  document.getElementById('grade-result').style.display='none';
+  toast('AI正在逐题阅判，约需30秒...','warning');
+
+  try{
+    // Build vision-capable prompt for exam grading
+    const systemPrompt=`你是一位专业的${subject}阅判老师。请仔细识别试卷图片中的每一道题目和学生的手写答案，逐题批改。
+
+返回JSON格式：
+{
+  "totalQuestions": 题目总数,
+  "score": "预估得分/满分（如85/100）",
+  "questions": [
+    {
+      "index": 题号,
+      "content": "题目内容（识别出的文字）",
+      "studentAnswer": "学生写的答案",
+      "correctAnswer": "正确答案",
+      "isCorrect": true/false,
+      "score": "该题得分/满分（如8/10）",
+      "errorType": "概念理解错误/计算失误/思路偏差/审题不清/公式遗忘/无错误",
+      "knowledgePoint": "对应知识点名称",
+      "explanation": "如果错了，解释为什么错；如果对了，简要说明解题要点"
+    }
+  ],
+  "summary": "总体评价文字",
+  "suggestions": ["改进建议1","改进建议2"]
+}
+
+年级：${grade}，学科：${subject}
+务必逐题识别，不要遗漏。如果某题无法识别，标注"无法识别"。
+只返回JSON。`;
+
+    // Try vision API first
+    let messages=[
+      {role:'system',content:systemPrompt},
+      {role:'user',content:[
+        {type:'text',text:'请逐题阅判这份试卷/作业，识别每道题目和学生的答案，给出批改结果。'},
+        {type:'image_url',image_url:{url:preview.src}}
+      ]}
+    ];
+
+    let result;
+    try{
+      const resp=await fetch(s.apiUrl+'/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.apiKey},
+        body:JSON.stringify({model:s.model,messages,temperature:0.3,max_tokens:4000})
+      });
+      if(!resp.ok)throw new Error('Vision API failed');
+      const data=await resp.json();
+      result=data.choices[0].message.content;
+    }catch(e){
+      // Fallback: try without vision (text-only description)
+      result=await callAI([
+        {role:'system',content:systemPrompt},
+        {role:'user',content:'请阅判这份试卷。图片已上传，请尽可能分析。如果无法识别图片，请告知用户需要更清晰的图片。'}
+      ]);
+    }
+
+    processGradeResult(result,grade,subject,preview.src);
+  }catch(e){
+    document.getElementById('grade-loading').style.display='none';
+    document.getElementById('grade-submit-btn').disabled=false;
+    toast('阅判失败: '+e.message,'error');
+  }
+}
+
+function processGradeResult(rawResult,grade,subject,imageData){
+  let gradeData;
+  try{
+    const jsonMatch=rawResult.match(/\{[\s\S]*\}/);
+    gradeData=jsonMatch?JSON.parse(jsonMatch[0]):JSON.parse(rawResult);
+  }catch(e){
+    gradeData={rawText:rawResult,questions:[],totalQuestions:0,score:'?',summary:'解析失败，请查看原始结果'};
+  }
+
+  document.getElementById('grade-loading').style.display='none';
+  document.getElementById('grade-submit-btn').disabled=false;
+
+  // Render result
+  const container=document.getElementById('grade-result');
+  container.style.display='block';
+
+  let html=`<div class="card fade-in" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="card-title">✍️ 阅判结果</div>
+      <div style="font-size:20px;font-weight:700;color:${gradeData.score&&parseFloat(gradeData.score)>=80?'var(--success)':'var(--warning)'}">${gradeData.score||'?'}分</div>
+    </div>
+    ${gradeData.summary?`<div style="padding:12px;background:rgba(108,92,231,0.05);border-radius:var(--radius-sm);margin-bottom:12px;font-size:13px;line-height:1.8">${gradeData.summary}</div>`:''}
+  </div>`;
+
+  // Render each question
+  const questions=gradeData.questions||[];
+  questions.forEach(q=>{
+    const isCorrect=q.isCorrect;
+    html+=`<div class="card fade-in" style="margin-bottom:12px;border-left:4px solid ${isCorrect?'var(--success)':'var(--danger)'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-weight:600;font-size:14px">第${q.index||'?'}题 <span style="color:${isCorrect?'var(--success)':'var(--danger)'};font-weight:700">${isCorrect?'✅ 正确':'❌ 错误'}</span></div>
+        <div style="font-size:13px;color:var(--text-light)">${q.score||'?'}</div>
+      </div>
+      <div style="font-size:13px;margin-bottom:8px;line-height:1.8"><strong>题目：</strong>${q.content||'无法识别'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px">
+        <div style="padding:8px;background:rgba(231,76,60,${isCorrect?'0':'0.05'});border-radius:6px;font-size:13px">
+          <strong>学生答案：</strong>${q.studentAnswer||'未作答'}
+        </div>
+        <div style="padding:8px;background:rgba(46,204,113,0.05);border-radius:6px;font-size:13px">
+          <strong>正确答案：</strong>${q.correctAnswer||'未知'}
+        </div>
+      </div>
+      ${!isCorrect?`<div style="display:flex;gap:6px;margin-bottom:8px">
+        <span class="tag danger">${q.errorType||'未知错误类型'}</span>
+        <span class="tag primary">${q.knowledgePoint||'未知知识点'}</span>
+      </div>
+      <div style="font-size:13px;color:var(--text-light);line-height:1.8">${q.explanation||''}</div>`:
+      `<div style="font-size:13px;color:var(--success)">${q.explanation||'解题正确'}</div>`}
+    </div>`;
+  });
+
+  // Suggestions
+  if(gradeData.suggestions?.length){
+    html+=`<div class="card fade-in" style="margin-bottom:12px">
+      <div class="card-title">💡 改进建议</div>
+      ${gradeData.suggestions.map(s=>`<div style="padding:8px;border-left:3px solid var(--accent);margin-bottom:8px;font-size:13px">${s}</div>`).join('')}
+    </div>`;
+  }
+
+  // Auto-add errors to error book button
+  const wrongQuestions=questions.filter(q=>!q.isCorrect);
+  if(wrongQuestions.length>0){
+    html+=`<div class="card fade-in">
+      <div class="card-title">📥 自动收录错题</div>
+      <div style="font-size:13px;color:var(--text-light);margin-bottom:12px">检测到 ${wrongQuestions.length} 道错题，一键归入错题本并自动分析</div>
+      <button class="btn btn-primary btn-block" onclick="autoAddGradeErrors()">📥 录入${wrongQuestions.length}道错题到错题本</button>
+    </div>`;
+  }
+
+  container.innerHTML=html;
+
+  // Store grade data for auto-add
+  window._gradeData=gradeData;
+  window._gradeImage=imageData;
+  window._gradeGrade=grade;
+  window._gradeSubject=subject;
+}
+
+async function autoAddGradeErrors(){
+  const gd=window._gradeData;
+  if(!gd||!gd.questions)return;
+  const wrongQuestions=gd.questions.filter(q=>!q.isCorrect);
+  const questions=load(SK.questions)||[];
+  const allAnalysis=load(SK.analysis)||[];
+
+  wrongQuestions.forEach(q=>{
+    const item={
+      id:uid(),
+      type:'grade-exam',
+      imageData:window._gradeImage,
+      question:q.content||'',
+      wrongAnswer:q.studentAnswer||'',
+      correctAnswer:q.correctAnswer||'',
+      grade:window._gradeGrade,
+      selfReason:q.errorType||'',
+      status:'unresolved',
+      createdAt:Date.now(),
+      gradeExamIndex:q.index
+    };
+    questions.unshift(item);
+    // Also add pre-computed analysis
+    allAnalysis.push({
+      itemId:item.id,
+      analysis:{
+        question:q.content,
+        wrongAnswer:q.studentAnswer,
+        correctAnswer:q.correctAnswer,
+        errorType:q.errorType,
+        knowledgePoints:[{id:'',name:q.knowledgePoint||'',relevance:0.9}],
+        errorAnalysis:q.explanation||'',
+        hint:''
+      },
+      createdAt:Date.now()
+    });
+  });
+
+  store(SK.questions,questions);
+  store(SK.analysis,allAnalysis);
+
+  // Update mastery for knowledge points
+  const mastery=load(SK.mastery)||{};
+  wrongQuestions.forEach(q=>{
+    const kpName=q.knowledgePoint||'';
+    // Try to match to knowledge tree
+    const match=KNOWLEDGE_TREE.find(k=>k.name===kpName||k.keywords.some(kw=>kpName.includes(kw)));
+    if(match){
+      const kid=match.id;
+      if(!mastery[kid])mastery[kid]={level:0,errorCount:0,practiceCount:0,correctCount:0,lastError:Date.now(),errors:[]};
+      mastery[kid].errorCount++;
+      mastery[kid].errors.push(item?.id||'');
+      mastery[kid].lastError=Date.now();
+      mastery[kid].level=calcMasteryLevel(mastery[kid]);
+    }
+  });
+  store(SK.mastery,mastery);
+
+  toast(`${wrongQuestions.length}道错题已归入错题本！`,'success');
+  showPage('errorbook');
+}
+
+// ============================================================
 //  AI API LAYER
 // ============================================================
 function getSettings(){return loadGlobal(SK.settings)||{apiUrl:'https://api.deepseek.com/v1',apiKey:'',model:'deepseek-chat'}}
 
-async function callAI(messages){
+async function callAI(messages, maxTokens=2000){
   const s=getSettings();
-  if(!s.apiKey){showModal(`<h3 style="margin-bottom:16px">🔑 需要配置API Key</h3><p style="color:var(--text-light);margin-bottom:16px">请先在设置页面配置AI API Key，才能使用智能分析功能。</p><button class="btn btn-primary btn-block" onclick="closeModal();showPage('settings')">前往设置</button>`);throw new Error('No API key')}
+  if(!s.apiKey){showModal('<h3 style="margin-bottom:16px">🔑 需要配置API Key</h3><p style="color:var(--text-light);margin-bottom:16px">请先在设置页面配置AI API Key，才能使用智能分析功能。</p><button class="btn btn-primary btn-block" onclick="closeModal();showPage(\'settings\')">前往设置</button>');throw new Error('No API key')}
   try{
     const resp=await fetch(s.apiUrl+'/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.apiKey},
-      body:JSON.stringify({model:s.model,messages,temperature:0.7,max_tokens:2000})
+      body:JSON.stringify({model:s.model,messages,temperature:0.7,max_tokens:maxTokens})
     });
     if(!resp.ok){const err=await resp.text();throw new Error('API错误: '+resp.status+' '+err)}
     const data=await resp.json();
