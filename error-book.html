@@ -569,7 +569,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
         <div style="text-align:center;margin-bottom:16px">
           <div style="font-size:48px;margin-bottom:8px">✍️</div>
           <div style="font-size:15px;font-weight:600;color:var(--primary)">试卷阅判</div>
-          <div style="font-size:13px;color:var(--text-light)">上传试卷/作业照片，AI逐题批改并自动收录错题</div>
+          <div style="font-size:13px;color:var(--text-light)">上传试卷/作业照片 → AI初步识别 → 您确认修正 → 录入错题本</div>
+        </div>
+        <div style="padding:10px 14px;background:rgba(243,156,18,0.1);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--text-light);line-height:1.6">
+          ⚠️ <b>AI辅助模式</b>：AI识别可能不够准确，每道题您都可以手动修正后再收录。建议拍清晰的正面照片，光线充足，避免阴影和倾斜。
         </div>
         <div class="upload-area" id="grade-upload-area" onclick="document.getElementById('grade-file-input').click()">
           <div class="upload-icon">📄</div>
@@ -581,7 +584,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
           <div class="form-group">
             <label class="form-label">年级</label>
             <select class="form-select" id="grade-exam-grade">
-              <option value="3">三年级</option><option value="4">四年级</option><option value="5">五年级</option><option value="6">六年级</option>
+              <option value="1">一年级</option><option value="2">二年级</option><option value="3">三年级</option><option value="4">四年级</option><option value="5">五年级</option><option value="6">六年级</option>
               <option value="7" selected>七年级</option><option value="8">八年级</option><option value="9">九年级</option>
               <option value="10">高一</option><option value="11">高二</option><option value="12">高三</option>
             </select>
@@ -593,7 +596,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
             </select>
           </div>
         </div>
-        <button class="btn btn-primary btn-lg btn-block" id="grade-submit-btn" onclick="submitGradeExam()">✍️ 开始阅判</button>
+        <button class="btn btn-primary btn-lg btn-block" id="grade-submit-btn" onclick="submitGradeExam()">✍️ AI识别并阅判</button>
         <div id="grade-loading" style="display:none;text-align:center;padding:24px">
           <div class="loading"><div class="spinner"></div><div>AI正在逐题批改，请稍候...</div></div>
         </div>
@@ -1146,24 +1149,30 @@ async function submitGradeExam(){
     // Build vision-capable prompt for exam grading
     const systemPrompt=`你是一位专业的${subject}阅判老师。请仔细识别试卷图片中的每一道题目和学生的手写答案，逐题批改。
 
+重要原则：
+1. 手写体识别难度大，如果你对某个字/数字的识别不够确定，在content/studentAnswer中标注"无法识别"或加"(不确定)"
+2. 宁可标注不确定，也不要强行猜测
+3. 估算题（如"约XX人"）判定时要考虑合理性范围
+
 返回JSON格式：
 {
   "totalQuestions": 题目总数,
-  "score": "预估得分/满分（如85/100）",
+  "score": "预估得分/满分（如85/100，仅参考）",
   "questions": [
     {
       "index": 题号,
-      "content": "题目内容（识别出的文字）",
-      "studentAnswer": "学生写的答案",
+      "content": "题目内容（识别出的文字，不确定的地方标注(不确定))",
+      "studentAnswer": "学生写的答案（不确定标注(不确定)，未找到标注'无法识别')",
       "correctAnswer": "正确答案",
       "isCorrect": true/false,
+      "confidence": 0.0-1.0（识别置信度，低于0.7表示不确定）,
       "score": "该题得分/满分（如8/10）",
-      "errorType": "概念理解错误/计算失误/思路偏差/审题不清/公式遗忘/无错误",
+      "errorType": "概念理解错误/计算失误/思路偏差/审题不清/公式遗忘/书写失误/无错误",
       "knowledgePoint": "对应知识点名称",
       "explanation": "如果错了，解释为什么错；如果对了，简要说明解题要点"
     }
   ],
-  "summary": "总体评价文字",
+  "summary": "总体评价文字（注明：AI识别仅供参考）",
   "suggestions": ["改进建议1","改进建议2"]
 }
 
@@ -1218,76 +1227,360 @@ function processGradeResult(rawResult,grade,subject,imageData){
   document.getElementById('grade-loading').style.display='none';
   document.getElementById('grade-submit-btn').disabled=false;
 
-  // Render result
+  // Render result — editable mode
   const container=document.getElementById('grade-result');
   container.style.display='block';
 
-  let html=`<div class="card fade-in" style="margin-bottom:16px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div class="card-title">✍️ 阅判结果</div>
-      <div style="font-size:20px;font-weight:700;color:${gradeData.score&&parseFloat(gradeData.score)>=80?'var(--success)':'var(--warning)'}">${gradeData.score||'?'}分</div>
-    </div>
-    ${gradeData.summary?`<div style="padding:12px;background:rgba(108,92,231,0.05);border-radius:var(--radius-sm);margin-bottom:12px;font-size:13px;line-height:1.8">${gradeData.summary}</div>`:''}
-  </div>`;
+  const containerEl=document.createElement('div');
+  containerEl.id='grade-editable-container';
 
-  // Render each question
+  // === Score & Summary Card ===
+  const summaryCard=document.createElement('div');
+  summaryCard.className='card fade-in';
+  summaryCard.style.cssText='margin-bottom:16px';
+
+  const summaryTop=document.createElement('div');
+  summaryTop.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:12px';
+  const summaryTitle=document.createElement('div');
+  summaryTitle.className='card-title';
+  summaryTitle.textContent='✍️ AI初步阅判结果';
+  const summaryScore=document.createElement('div');
+  summaryScore.style.cssText='font-size:20px;font-weight:700';
+  const scoreVal=gradeData.score?parseFloat(gradeData.score):0;
+  summaryScore.style.color=scoreVal>=80?'var(--success)':'var(--warning)';
+  summaryScore.textContent=(gradeData.score||'?')+'分';
+  summaryTop.appendChild(summaryTitle);
+  summaryTop.appendChild(summaryScore);
+
+  const disclaimer=document.createElement('div');
+  disclaimer.style.cssText='padding:10px 14px;background:rgba(243,156,18,0.1);border-radius:8px;margin-bottom:12px;font-size:12px;color:var(--warning);line-height:1.6';
+  disclaimer.innerHTML='⚠️ 以上分数为AI估算，仅供参考。请逐题检查下方识别结果，修正后再确认收录。';
+
+  const summaryText=document.createElement('div');
+  summaryText.style.cssText='padding:12px;background:rgba(108,92,231,0.05);border-radius:var(--radius-sm);font-size:13px;line-height:1.8';
+  summaryText.textContent=gradeData.summary||'';
+
+  summaryCard.appendChild(summaryTop);
+  summaryCard.appendChild(disclaimer);
+  if(gradeData.summary)summaryCard.appendChild(summaryText);
+  containerEl.appendChild(summaryCard);
+
+  // === Editable Question Cards ===
   const questions=gradeData.questions||[];
-  questions.forEach(q=>{
+  questions.forEach((q,i)=>{
     const isCorrect=q.isCorrect;
-    html+=`<div class="card fade-in" style="margin-bottom:12px;border-left:4px solid ${isCorrect?'var(--success)':'var(--danger)'}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-weight:600;font-size:14px">第${q.index||'?'}题 <span style="color:${isCorrect?'var(--success)':'var(--danger)'};font-weight:700">${isCorrect?'✅ 正确':'❌ 错误'}</span></div>
-        <div style="font-size:13px;color:var(--text-light)">${q.score||'?'}</div>
-      </div>
-      <div style="font-size:13px;margin-bottom:8px;line-height:1.8"><strong>题目：</strong>${q.content||'无法识别'}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px">
-        <div style="padding:8px;background:rgba(231,76,60,${isCorrect?'0':'0.05'});border-radius:6px;font-size:13px">
-          <strong>学生答案：</strong>${q.studentAnswer||'未作答'}
-        </div>
-        <div style="padding:8px;background:rgba(46,204,113,0.05);border-radius:6px;font-size:13px">
-          <strong>正确答案：</strong>${q.correctAnswer||'未知'}
-        </div>
-      </div>
-      ${!isCorrect?`<div style="display:flex;gap:6px;margin-bottom:8px">
-        <span class="tag danger">${q.errorType||'未知错误类型'}</span>
-        <span class="tag primary">${q.knowledgePoint||'未知知识点'}</span>
-      </div>
-      <div style="font-size:13px;color:var(--text-light);line-height:1.8">${q.explanation||''}</div>`:
-      `<div style="font-size:13px;color:var(--success)">${q.explanation||'解题正确'}</div>`}
-    </div>`;
+    const isUncertain=!q.content||q.content==='无法识别'||!q.studentAnswer||q.studentAnswer==='无法识别'||q.studentAnswer==='未识别';
+
+    const qCard=document.createElement('div');
+    qCard.className='card fade-in grade-q-card';
+    const borderColor=isUncertain?'var(--warning)':isCorrect?'var(--success)':'var(--danger)';
+    qCard.style.cssText='margin-bottom:12px;border-left:4px solid '+borderColor;
+    qCard.dataset.index=i;
+
+    // Header row
+    const qHeader=document.createElement('div');
+    qHeader.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px';
+    const qTitle=document.createElement('div');
+    qTitle.style.cssText='font-weight:600;font-size:14px';
+    qTitle.innerHTML='第'+(q.index||'?')+'题 ';
+    const qStatus=document.createElement('span');
+    if(isUncertain){
+      qStatus.style.cssText='color:var(--warning);font-weight:700';
+      qStatus.textContent='⚠️ 需确认';
+    }else if(isCorrect){
+      qStatus.style.cssText='color:var(--success);font-weight:700';
+      qStatus.textContent='✅ 正确';
+    }else{
+      qStatus.style.cssText='color:var(--danger);font-weight:700';
+      qStatus.textContent='❌ 错误';
+    }
+    qTitle.appendChild(qStatus);
+
+    const qScoreLabel=document.createElement('div');
+    qScoreLabel.style.cssText='font-size:13px;color:var(--text-light)';
+    qScoreLabel.textContent=q.score||'?';
+    qHeader.appendChild(qTitle);
+    qHeader.appendChild(qScoreLabel);
+    qCard.appendChild(qHeader);
+
+    // Uncertain warning
+    if(isUncertain){
+      const warn=document.createElement('div');
+      warn.style.cssText='padding:8px;background:rgba(243,156,18,0.1);border-radius:6px;margin-bottom:8px;font-size:12px;color:var(--warning)';
+      warn.textContent='⚠️ AI对此题识别不确定，请手动修正后确认';
+      qCard.appendChild(warn);
+    }
+
+    // Editable fields
+    const fields=[
+      {label:'题目内容',key:'content',value:q.content||'',multiline:true},
+      {label:'学生答案',key:'studentAnswer',value:q.studentAnswer||'',multiline:false},
+      {label:'正确答案',key:'correctAnswer',value:q.correctAnswer||'',multiline:false},
+    ];
+
+    fields.forEach(f=>{
+      const fieldRow=document.createElement('div');
+      fieldRow.style.cssText='margin-bottom:8px';
+
+      const fieldLabel=document.createElement('div');
+      fieldLabel.style.cssText='font-size:12px;color:var(--text-light);margin-bottom:4px;font-weight:600';
+      fieldLabel.textContent=f.label+' (可编辑)';
+      fieldRow.appendChild(fieldLabel);
+
+      let input;
+      if(f.multiline){
+        input=document.createElement('textarea');
+        input.style.cssText='width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;line-height:1.6;background:var(--bg-card);color:var(--text);resize:vertical;min-height:40px';
+        input.value=f.value;
+      }else{
+        input=document.createElement('input');
+        input.type='text';
+        input.style.cssText='width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg-card);color:var(--text)';
+        input.value=f.value;
+      }
+      input.className='grade-edit-field';
+      input.dataset.questionIndex=i;
+      input.dataset.fieldKey=f.key;
+      if(isUncertain){
+        input.style.borderColor='var(--warning)';
+        input.style.background='rgba(243,156,18,0.05)';
+      }
+      fieldRow.appendChild(input);
+      qCard.appendChild(fieldRow);
+    });
+
+    // Correct/Wrong toggle
+    const toggleRow=document.createElement('div');
+    toggleRow.style.cssText='display:flex;align-items:center;gap:12px;margin-bottom:8px';
+
+    const toggleLabel=document.createElement('div');
+    toggleLabel.style.cssText='font-size:13px;font-weight:600';
+    toggleLabel.textContent='判定结果:';
+    toggleRow.appendChild(toggleLabel);
+
+    const correctBtn=document.createElement('button');
+    correctBtn.className='btn grade-toggle-btn'+(isCorrect?' btn-success-active':'');
+    correctBtn.style.cssText=isCorrect?'background:var(--success);color:#fff;padding:6px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer':'background:transparent;border:1px solid var(--success);color:var(--success);padding:6px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer';
+    correctBtn.textContent='✅ 正确';
+    correctBtn.dataset.questionIndex=i;
+    correctBtn.dataset.value='correct';
+    correctBtn.onclick=function(){toggleGradeResult(this,i,'correct')};
+    toggleRow.appendChild(correctBtn);
+
+    const wrongBtn=document.createElement('button');
+    wrongBtn.className='btn grade-toggle-btn'+((!isCorrect&&!isUncertain)?' btn-danger-active':'');
+    wrongBtn.style.cssText=(!isCorrect&&!isUncertain)?'background:var(--danger);color:#fff;padding:6px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer':'background:transparent;border:1px solid var(--danger);color:var(--danger);padding:6px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer';
+    wrongBtn.textContent='❌ 错误';
+    wrongBtn.dataset.questionIndex=i;
+    wrongBtn.dataset.value='wrong';
+    wrongBtn.onclick=function(){toggleGradeResult(this,i,'wrong')};
+    toggleRow.appendChild(wrongBtn);
+
+    qCard.appendChild(toggleRow);
+
+    // Error type & knowledge point (editable, shown for wrong questions)
+    const errorInfoRow=document.createElement('div');
+    errorInfoRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px';
+
+    // Error type dropdown
+    const errorTypeGroup=document.createElement('div');
+    const errorTypeLabel=document.createElement('div');
+    errorTypeLabel.style.cssText='font-size:12px;color:var(--text-light);margin-bottom:4px';
+    errorTypeLabel.textContent='错误类型';
+    errorTypeGroup.appendChild(errorTypeLabel);
+    const errorTypeSelect=document.createElement('select');
+    errorTypeSelect.className='form-select grade-edit-field';
+    errorTypeSelect.dataset.questionIndex=i;
+    errorTypeSelect.dataset.fieldKey='errorType';
+    errorTypeSelect.style.cssText='padding:6px 10px;font-size:13px';
+    const errorTypes=['概念理解错误','计算失误','思路偏差','审题不清','公式遗忘','书写失误','无错误'];
+    errorTypes.forEach(et=>{
+      const opt=document.createElement('option');
+      opt.value=et;opt.textContent=et;
+      if(et===q.errorType)opt.selected=true;
+      errorTypeSelect.appendChild(opt);
+    });
+    errorTypeGroup.appendChild(errorTypeSelect);
+    errorInfoRow.appendChild(errorTypeGroup);
+
+    // Knowledge point input
+    const kpGroup=document.createElement('div');
+    const kpLabel=document.createElement('div');
+    kpLabel.style.cssText='font-size:12px;color:var(--text-light);margin-bottom:4px';
+    kpLabel.textContent='知识点';
+    kpGroup.appendChild(kpLabel);
+    const kpInput=document.createElement('input');
+    kpInput.type='text';
+    kpInput.className='form-select grade-edit-field';
+    kpInput.dataset.questionIndex=i;
+    kpInput.dataset.fieldKey='knowledgePoint';
+    kpInput.style.cssText='padding:6px 10px;font-size:13px';
+    kpInput.value=q.knowledgePoint||'';
+    kpGroup.appendChild(kpInput);
+    errorInfoRow.appendChild(kpGroup);
+
+    qCard.appendChild(errorInfoRow);
+
+    // Explanation (read-only, can be hidden)
+    if(q.explanation){
+      const expDiv=document.createElement('div');
+      expDiv.style.cssText='font-size:12px;color:var(--text-light);line-height:1.6;padding:6px 0';
+      expDiv.innerHTML='<strong>AI解析：</strong>'+q.explanation;
+      qCard.appendChild(expDiv);
+    }
+
+    containerEl.appendChild(qCard);
   });
 
-  // Suggestions
-  if(gradeData.suggestions?.length){
-    html+=`<div class="card fade-in" style="margin-bottom:12px">
-      <div class="card-title">💡 改进建议</div>
-      ${gradeData.suggestions.map(s=>`<div style="padding:8px;border-left:3px solid var(--accent);margin-bottom:8px;font-size:13px">${s}</div>`).join('')}
-    </div>`;
+  // === Suggestions Card ===
+  if(gradeData.suggestions&&gradeData.suggestions.length){
+    const sugCard=document.createElement('div');
+    sugCard.className='card fade-in';
+    sugCard.style.cssText='margin-bottom:12px';
+    const sugTitle=document.createElement('div');
+    sugTitle.className='card-title';
+    sugTitle.textContent='💡 改进建议';
+    sugCard.appendChild(sugTitle);
+    gradeData.suggestions.forEach(s=>{
+      const sugItem=document.createElement('div');
+      sugItem.style.cssText='padding:8px;border-left:3px solid var(--accent);margin-bottom:8px;font-size:13px';
+      sugItem.textContent=s;
+      sugCard.appendChild(sugItem);
+    });
+    containerEl.appendChild(sugCard);
   }
 
-  // Auto-add errors to error book button
-  const wrongQuestions=questions.filter(q=>!q.isCorrect);
-  if(wrongQuestions.length>0){
-    html+=`<div class="card fade-in">
-      <div class="card-title">📥 自动收录错题</div>
-      <div style="font-size:13px;color:var(--text-light);margin-bottom:12px">检测到 ${wrongQuestions.length} 道错题，一键归入错题本并自动分析</div>
-      <button class="btn btn-primary btn-block" onclick="autoAddGradeErrors()">📥 录入${wrongQuestions.length}道错题到错题本</button>
-    </div>`;
-  }
+  // === Confirm & Add Button ===
+  const actionCard=document.createElement('div');
+  actionCard.className='card fade-in';
+  actionCard.style.cssText='margin-bottom:12px';
 
-  container.innerHTML=html;
+  const actionTitle=document.createElement('div');
+  actionTitle.className='card-title';
+  actionTitle.textContent='📥 确认收录错题';
+  actionCard.appendChild(actionTitle);
 
-  // Store grade data for auto-add
+  const actionDesc=document.createElement('div');
+  actionDesc.style.cssText='font-size:13px;color:var(--text-light);margin-bottom:12px;line-height:1.6';
+  actionDesc.innerHTML='请逐题检查上方结果，修正AI识别错误的内容，然后点击确认。<br>仅标记为"❌ 错误"的题目会被录入错题本。';
+  actionCard.appendChild(actionDesc);
+
+  const confirmBtn=document.createElement('button');
+  confirmBtn.className='btn btn-primary btn-block';
+  confirmBtn.id='grade-confirm-btn';
+  confirmBtn.onclick=confirmAndAddGradeErrors;
+  const wrongCount=questions.filter(q=>!q.isCorrect).length;
+  confirmBtn.textContent='✅ 确认修正完毕，录入错题本（当前'+wrongCount+'道错题）';
+  actionCard.appendChild(confirmBtn);
+
+  containerEl.appendChild(actionCard);
+
+  container.innerHTML='';
+  container.appendChild(containerEl);
+
+  // Store grade data for editing & confirmation
   window._gradeData=gradeData;
   window._gradeImage=imageData;
   window._gradeGrade=grade;
   window._gradeSubject=subject;
 }
 
-async function autoAddGradeErrors(){
+// Toggle correct/wrong for a question
+function toggleGradeResult(btnEl,qIndex,value){
+  const qCard=btnEl.closest('.grade-q-card');
+  if(!qCard)return;
+
+  // Update visual buttons
+  const toggleBtns=qCard.querySelectorAll('.grade-toggle-btn');
+  toggleBtns.forEach(b=>{
+    const bVal=b.dataset.value;
+    if(bVal===value){
+      if(bVal==='correct'){
+        b.style.cssText='background:var(--success);color:#fff;padding:6px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer';
+        b.classList.add('btn-success-active');
+      }else{
+        b.style.cssText='background:var(--danger);color:#fff;padding:6px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer';
+        b.classList.add('btn-danger-active');
+      }
+    }else{
+      if(bVal==='correct'){
+        b.style.cssText='background:transparent;border:1px solid var(--success);color:var(--success);padding:6px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer';
+        b.classList.remove('btn-success-active');
+      }else{
+        b.style.cssText='background:transparent;border:1px solid var(--danger);color:var(--danger);padding:6px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer';
+        b.classList.remove('btn-danger-active');
+      }
+    }
+  });
+
+  // Update card border color
+  if(value==='correct'){
+    qCard.style.borderLeftColor='var(--success)';
+  }else{
+    qCard.style.borderLeftColor='var(--danger)';
+  }
+
+  // Update status text
+  const statusSpan=qCard.querySelector('span');
+  if(statusSpan){
+    if(value==='correct'){
+      statusSpan.style.cssText='color:var(--success);font-weight:700';
+      statusSpan.textContent='✅ 正确';
+    }else{
+      statusSpan.style.cssText='color:var(--danger);font-weight:700';
+      statusSpan.textContent='❌ 错误';
+    }
+  }
+
+  // Update isCorrect in stored data
+  const gd=window._gradeData;
+  if(gd&&gd.questions&&gd.questions[qIndex]){
+    gd.questions[qIndex].isCorrect=(value==='correct');
+  }
+
+  // Update confirm button text
+  updateConfirmBtnText();
+}
+
+function updateConfirmBtnText(){
   const gd=window._gradeData;
   if(!gd||!gd.questions)return;
+  const wrongCount=gd.questions.filter(q=>!q.isCorrect).length;
+  const confirmBtn=document.getElementById('grade-confirm-btn');
+  if(confirmBtn){
+    if(wrongCount===0){
+      confirmBtn.textContent='✅ 全部正确！无需录入错题本';
+      confirmBtn.className='btn btn-accent btn-block';
+      confirmBtn.disabled=true;
+    }else{
+      confirmBtn.textContent='✅ 确认修正完毕，录入'+wrongCount+'道错题到错题本';
+      confirmBtn.className='btn btn-primary btn-block';
+      confirmBtn.disabled=false;
+    }
+  }
+}
+
+// Collect edited values from all fields and add to error book
+function confirmAndAddGradeErrors(){
+  const gd=window._gradeData;
+  if(!gd||!gd.questions){toast('没有阅判数据','error');return}
+
+  // Collect all edited field values
+  const editFields=document.querySelectorAll('.grade-edit-field');
+  editFields.forEach(f=>{
+    const qi=parseInt(f.dataset.questionIndex);
+    const fk=f.dataset.fieldKey;
+    if(gd.questions[qi]&&fk){
+      gd.questions[qi][fk]=f.value;
+    }
+  });
+
   const wrongQuestions=gd.questions.filter(q=>!q.isCorrect);
+  if(wrongQuestions.length===0){
+    toast('全部正确，无需录入！','success');
+    return;
+  }
+
   const questions=load(SK.questions)||[];
   const allAnalysis=load(SK.analysis)||[];
 
@@ -1306,7 +1599,6 @@ async function autoAddGradeErrors(){
       gradeExamIndex:q.index
     };
     questions.unshift(item);
-    // Also add pre-computed analysis
     allAnalysis.push({
       itemId:item.id,
       analysis:{
@@ -1329,7 +1621,6 @@ async function autoAddGradeErrors(){
   const mastery=load(SK.mastery)||{};
   wrongQuestions.forEach(q=>{
     const kpName=q.knowledgePoint||'';
-    // Try to match to knowledge tree
     const match=KNOWLEDGE_TREE.find(k=>k.name===kpName||k.keywords.some(kw=>kpName.includes(kw)));
     if(match){
       const kid=match.id;
@@ -1342,7 +1633,7 @@ async function autoAddGradeErrors(){
   });
   store(SK.mastery,mastery);
 
-  toast(`${wrongQuestions.length}道错题已归入错题本！`,'success');
+  toast('已确认并录入'+wrongQuestions.length+'道错题到错题本！','success');
   showPage('errorbook');
 }
 
